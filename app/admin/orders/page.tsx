@@ -1,116 +1,165 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Search, Filter, Eye, Printer, RefreshCw, Calendar, DollarSign, Package, MoreHorizontal } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Separator } from "@/components/ui/separator"
-import { db, type Transaction } from "../../services/database"
+import { useState, useEffect } from "react";
+import {
+  Search,
+  Filter,
+  Eye,
+  Printer,
+  RefreshCw,
+  Calendar,
+  DollarSign,
+  Package,
+  MoreHorizontal,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import { db, type Transaction } from "../../services/database";
+import { formatRupiah } from "@/lib/currency";
 
 interface OrderDetails extends Transaction {
-  customerName?: string
-  customerEmail?: string
+  customerName?: string;
+  customerEmail?: string;
 }
 
 const orderStatuses = [
-  { value: "pending", label: "Pending", color: "bg-yellow-100 text-yellow-800" },
-  { value: "processing", label: "Processing", color: "bg-blue-100 text-blue-800" },
-  { value: "completed", label: "Completed", color: "bg-green-100 text-green-800" },
+  {
+    value: "pending",
+    label: "Pending",
+    color: "bg-yellow-100 text-yellow-800",
+  },
+  {
+    value: "processing",
+    label: "Processing",
+    color: "bg-blue-100 text-blue-800",
+  },
+  {
+    value: "completed",
+    label: "Completed",
+    color: "bg-green-100 text-green-800",
+  },
   { value: "cancelled", label: "Cancelled", color: "bg-red-100 text-red-800" },
   { value: "refunded", label: "Refunded", color: "bg-gray-100 text-gray-800" },
-]
+];
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<OrderDetails[]>([])
-  const [filteredOrders, setFilteredOrders] = useState<OrderDetails[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedOrder, setSelectedOrder] = useState<OrderDetails | null>(null)
-  const [showOrderDetails, setShowOrderDetails] = useState(false)
+  const [orders, setOrders] = useState<OrderDetails[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<OrderDetails[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedOrder, setSelectedOrder] = useState<OrderDetails | null>(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
 
   useEffect(() => {
-    loadOrders()
-  }, [])
+    loadOrders();
+  }, []);
 
   useEffect(() => {
-    filterOrders()
-  }, [orders, searchQuery, statusFilter])
+    filterOrders();
+  }, [orders, searchQuery, statusFilter]);
 
   const loadOrders = async () => {
-    const transactions = await db.getTransactions()
-    const customers = await db.getCustomers()
+    const transactions = await db.getTransactions();
+    const customers = await db.getCustomers();
 
-    const ordersWithCustomerInfo: OrderDetails[] = transactions.map((transaction) => {
-      const customer = customers.find((c) => c.id === transaction.customerId)
-      return {
-        ...transaction,
-        customerName: customer?.name || "Guest",
-        customerEmail: customer?.email || "",
+    const ordersWithCustomerInfo: OrderDetails[] = transactions.map(
+      (transaction) => {
+        const customer = customers.find((c) => c.id === transaction.customerId);
+        return {
+          ...transaction,
+          customerName: customer?.name || "Guest",
+          customerEmail: customer?.email || "",
+        };
       }
-    })
+    );
 
-    setOrders(ordersWithCustomerInfo.reverse()) // Most recent first
-  }
-
+    setOrders(ordersWithCustomerInfo.reverse()); // Most recent first
+  };
   const filterOrders = () => {
-    let filtered = orders
+    let filtered = orders;
 
     if (searchQuery) {
       filtered = filtered.filter(
         (order) =>
-          order.receiptNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          order.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          order.customerEmail?.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
+          order.receiptNumber
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          order.customerName
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          order.customerEmail?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
 
     if (statusFilter !== "all") {
       // For demo purposes, we'll assign random statuses
       filtered = filtered.filter((_, index) => {
-        const statuses = ["completed", "pending", "processing"]
-        const status = statuses[index % statuses.length]
-        return status === statusFilter
-      })
+        const statuses = ["completed", "pending", "processing"];
+        const status = statuses[index % statuses.length];
+        return status === statusFilter;
+      });
     }
 
-    setFilteredOrders(filtered)
-  }
+    setFilteredOrders(filtered);
+  };
 
   const getOrderStatus = (index: number) => {
-    const statuses = ["completed", "pending", "processing", "completed", "completed"]
-    return statuses[index % statuses.length]
-  }
+    const statuses = [
+      "completed",
+      "pending",
+      "processing",
+      "completed",
+      "completed",
+    ];
+    return statuses[index % statuses.length];
+  };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = orderStatuses.find((s) => s.value === status)
-    return statusConfig || orderStatuses[0]
-  }
+    const statusConfig = orderStatuses.find((s) => s.value === status);
+    return statusConfig || orderStatuses[0];
+  };
 
   const handleViewOrder = (order: OrderDetails) => {
-    setSelectedOrder(order)
-    setShowOrderDetails(true)
-  }
+    setSelectedOrder(order);
+    setShowOrderDetails(true);
+  };
 
   const handlePrintReceipt = (order: OrderDetails) => {
     // In a real app, this would trigger receipt printing
-    console.log("Printing receipt for order:", order.receiptNumber)
-  }
+    console.log("Printing receipt for order:", order.receiptNumber);
+  };
 
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString("en-US", {
+    return new Date(date).toLocaleDateString("id-ID", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    })
-  }
-
+    });
+  };
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -142,7 +191,11 @@ export default function OrdersPage() {
               <DollarSign className="h-4 w-4 text-green-500" />
               <span className="text-sm font-medium">Total Revenue</span>
             </div>
-            <p className="text-2xl font-bold mt-1">${orders.reduce((sum, order) => sum + order.total, 0).toFixed(2)}</p>
+            <p className="text-2xl font-bold mt-1">
+              {formatRupiah(
+                orders.reduce((sum, order) => sum + order.total, 0)
+              )}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -151,7 +204,9 @@ export default function OrdersPage() {
               <RefreshCw className="h-4 w-4 text-yellow-500" />
               <span className="text-sm font-medium">Pending</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{orders.filter((_, i) => getOrderStatus(i) === "pending").length}</p>
+            <p className="text-2xl font-bold mt-1">
+              {orders.filter((_, i) => getOrderStatus(i) === "pending").length}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -163,8 +218,8 @@ export default function OrdersPage() {
             <p className="text-2xl font-bold mt-1">
               {
                 orders.filter((order) => {
-                  const today = new Date().toDateString()
-                  return new Date(order.timestamp).toDateString() === today
+                  const today = new Date().toDateString();
+                  return new Date(order.timestamp).toDateString() === today;
                 }).length
               }
             </p>
@@ -225,18 +280,27 @@ export default function OrdersPage() {
               {/* Table Body */}
               <div className="divide-y">
                 {filteredOrders.map((order, index) => {
-                  const status = getOrderStatus(index)
-                  const statusConfig = getStatusBadge(status)
+                  const status = getOrderStatus(index);
+                  const statusConfig = getStatusBadge(status);
 
                   return (
-                    <div key={order.id} className="grid grid-cols-12 gap-4 p-4 hover:bg-muted/50">
+                    <div
+                      key={order.id}
+                      className="grid grid-cols-12 gap-4 p-4 hover:bg-muted/50"
+                    >
                       <div className="col-span-2">
                         <p className="font-medium">#{order.receiptNumber}</p>
-                        <p className="text-xs text-muted-foreground">{order.paymentMethod}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {order.paymentMethod}
+                        </p>
                       </div>
                       <div className="col-span-2">
                         <p className="font-medium">{order.customerName}</p>
-                        {order.customerEmail && <p className="text-xs text-muted-foreground">{order.customerEmail}</p>}
+                        {order.customerEmail && (
+                          <p className="text-xs text-muted-foreground">
+                            {order.customerEmail}
+                          </p>
+                        )}
                       </div>
                       <div className="col-span-2">
                         <p className="text-sm">{formatDate(order.timestamp)}</p>
@@ -245,27 +309,41 @@ export default function OrdersPage() {
                         <p className="text-sm">{order.items.length}</p>
                       </div>
                       <div className="col-span-2">
-                        <p className="font-medium">${order.total.toFixed(2)}</p>
+                        <p className="font-medium">
+                          {formatRupiah(order.total)}
+                        </p>
                         {order.discount > 0 && (
-                          <p className="text-xs text-green-600">-${order.discount.toFixed(2)} discount</p>
+                          <p className="text-xs text-green-600">
+                            -{formatRupiah(order.discount)} discount
+                          </p>
                         )}
                       </div>
                       <div className="col-span-2">
-                        <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+                        <Badge className={statusConfig.color}>
+                          {statusConfig.label}
+                        </Badge>
                       </div>
                       <div className="col-span-1">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewOrder(order)}>
+                            <DropdownMenuItem
+                              onClick={() => handleViewOrder(order)}
+                            >
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handlePrintReceipt(order)}>
+                            <DropdownMenuItem
+                              onClick={() => handlePrintReceipt(order)}
+                            >
                               <Printer className="h-4 w-4 mr-2" />
                               Print Receipt
                             </DropdownMenuItem>
@@ -273,7 +351,7 @@ export default function OrdersPage() {
                         </DropdownMenu>
                       </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -297,7 +375,9 @@ export default function OrdersPage() {
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Order Details - #{selectedOrder?.receiptNumber}</DialogTitle>
+            <DialogTitle>
+              Order Details - #{selectedOrder?.receiptNumber}
+            </DialogTitle>
           </DialogHeader>
           {selectedOrder && (
             <div className="space-y-6">
@@ -307,11 +387,13 @@ export default function OrdersPage() {
                   <h3 className="font-medium mb-2">Customer Information</h3>
                   <div className="space-y-1 text-sm">
                     <p>
-                      <span className="font-medium">Name:</span> {selectedOrder.customerName}
+                      <span className="font-medium">Name:</span>{" "}
+                      {selectedOrder.customerName}
                     </p>
                     {selectedOrder.customerEmail && (
                       <p>
-                        <span className="font-medium">Email:</span> {selectedOrder.customerEmail}
+                        <span className="font-medium">Email:</span>{" "}
+                        {selectedOrder.customerEmail}
                       </p>
                     )}
                   </div>
@@ -320,14 +402,18 @@ export default function OrdersPage() {
                   <h3 className="font-medium mb-2">Order Information</h3>
                   <div className="space-y-1 text-sm">
                     <p>
-                      <span className="font-medium">Date:</span> {formatDate(selectedOrder.timestamp)}
+                      <span className="font-medium">Date:</span>{" "}
+                      {formatDate(selectedOrder.timestamp)}
                     </p>
                     <p>
-                      <span className="font-medium">Payment:</span> {selectedOrder.paymentMethod}
+                      <span className="font-medium">Payment:</span>{" "}
+                      {selectedOrder.paymentMethod}
                     </p>
                     <p>
                       <span className="font-medium">Status:</span>{" "}
-                      <Badge className={getStatusBadge(getOrderStatus(0)).color}>
+                      <Badge
+                        className={getStatusBadge(getOrderStatus(0)).color}
+                      >
                         {getStatusBadge(getOrderStatus(0)).label}
                       </Badge>
                     </p>
@@ -342,14 +428,17 @@ export default function OrdersPage() {
                 <h3 className="font-medium mb-4">Order Items</h3>
                 <div className="space-y-3">
                   {selectedOrder.items.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
                       <div>
                         <p className="font-medium">{item.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          ${item.price.toFixed(2)} × {item.quantity}
+                          {formatRupiah(item.price)} × {item.quantity}
                         </p>
                       </div>
-                      <p className="font-medium">${item.total.toFixed(2)}</p>
+                      <p className="font-medium">{formatRupiah(item.total)}</p>
                     </div>
                   ))}
                 </div>
@@ -363,22 +452,22 @@ export default function OrdersPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${selectedOrder.subtotal.toFixed(2)}</span>
+                    <span>{formatRupiah(selectedOrder.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tax</span>
-                    <span>${selectedOrder.tax.toFixed(2)}</span>
+                    <span>{formatRupiah(selectedOrder.tax)}</span>
                   </div>
                   {selectedOrder.discount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount</span>
-                      <span>-${selectedOrder.discount.toFixed(2)}</span>
+                      <span>-{formatRupiah(selectedOrder.discount)}</span>
                     </div>
                   )}
                   <Separator />
                   <div className="flex justify-between font-medium text-lg">
                     <span>Total</span>
-                    <span>${selectedOrder.total.toFixed(2)}</span>
+                    <span>{formatRupiah(selectedOrder.total)}</span>
                   </div>
                 </div>
               </div>
@@ -389,7 +478,10 @@ export default function OrdersPage() {
                   <Printer className="h-4 w-4 mr-2" />
                   Print Receipt
                 </Button>
-                <Button variant="outline" onClick={() => setShowOrderDetails(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowOrderDetails(false)}
+                >
                   Close
                 </Button>
               </div>
@@ -398,5 +490,5 @@ export default function OrdersPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

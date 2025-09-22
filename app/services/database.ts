@@ -15,7 +15,7 @@ export interface Transaction {
   id: string;
   customerId?: string;
   items: Array<{
-    id: string; // Diubah dari number ke string untuk konsistensi
+    id: string;
     name: string;
     price: number;
     quantity: number;
@@ -45,7 +45,7 @@ export interface SalesReport {
   totalTransactions: number;
   averageTransaction: number;
   topProducts: Array<{
-    id: string; // Diubah dari number ke string
+    id: string;
     name: string;
     quantity: number;
     revenue: number;
@@ -143,7 +143,6 @@ class DatabaseService {
   async getInventory(): Promise<InventoryItem[]> {
     const inventory = localStorage.getItem(this.getStorageKey("inventory"));
     if (!inventory) {
-      // Initialize with default inventory
       const defaultInventory = this.getDefaultInventory();
       await this.saveInventory(defaultInventory);
       return defaultInventory;
@@ -195,7 +194,6 @@ class DatabaseService {
     const averageTransaction =
       totalTransactions > 0 ? totalSales / totalTransactions : 0;
 
-    // Calculate top products
     const productSales = new Map<
       string,
       { name: string; quantity: number; revenue: number }
@@ -232,29 +230,28 @@ class DatabaseService {
     return [
       {
         id: "1",
-        name: "Cheeseburger",
-        price: 8.99,
+        name: "Burger Klasik",
+        price: 120000,
         image: "/classic-beef-burger.png",
         category: "food",
         stock: 50,
         lowStockThreshold: 10,
         supplier: "Food Supplier Co.",
         lastRestocked: new Date(),
-        cost: 4.5,
+        cost: 67500,
       },
       {
         id: "2",
-        name: "Pepperoni Pizza",
-        price: 12.99,
+        name: "Pizza Lezat",
+        price: 180000,
         image: "/delicious-pizza.png",
         category: "food",
         stock: 30,
         lowStockThreshold: 5,
         supplier: "Pizza Ingredients Ltd.",
         lastRestocked: new Date(),
-        cost: 6.5,
+        cost: 97500,
       },
-      // Add more default inventory items...
     ];
   }
 }

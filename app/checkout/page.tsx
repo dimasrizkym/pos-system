@@ -12,14 +12,15 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "../context/cart-context";
 import { db } from "../services/database";
+import { formatRupiah } from "@/lib/currency";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, cartTotal, clearCart, customer } = useCart();
   const [paymentMethod, setPaymentMethod] = useState("card");
 
-  const tax = cartTotal * 0.1;
-  const grandTotal = cartTotal + tax; // Perhitungan total tanpa diskon
+  const tax = cartTotal * 0.11; // Pajak 11%
+  const grandTotal = cartTotal + tax;
 
   const handlePayment = async () => {
     const transaction = {
@@ -34,32 +35,24 @@ export default function CheckoutPage() {
       })),
       subtotal: cartTotal,
       tax: tax,
-      discount: 0, // Set diskon menjadi 0
+      discount: 0,
       total: grandTotal,
       paymentMethod: paymentMethod,
       timestamp: new Date(),
       receiptNumber: Math.floor(100000 + Math.random() * 900000).toString(),
     };
 
-    // Save transaction
     await db.saveTransaction(transaction);
 
-    // Update customer loyalty points and spending
     if (customer) {
       const updatedCustomer = {
         ...customer,
-        loyaltyPoints: customer.loyaltyPoints + Math.floor(grandTotal),
+        loyaltyPoints: customer.loyaltyPoints + Math.floor(grandTotal / 1000), // 1 poin per Rp 1,000
         totalSpent: customer.totalSpent + grandTotal,
         lastVisit: new Date(),
       };
       await db.saveCustomer(updatedCustomer);
     }
-
-    // Update inventory
-    for (const item of cart) {
-      await db.updateStock(item.id, item.quantity);
-    }
-
     router.push("/success");
   };
 
@@ -83,71 +76,67 @@ export default function CheckoutPage() {
     <div className="container mx-auto max-w-4xl py-8">
       <Button variant="ghost" className="mb-6" onClick={() => router.push("/")}>
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to POS
+        Kembali ke POS
       </Button>
 
       <h1 className="mb-6 text-3xl font-bold">Checkout</h1>
 
       <div className="grid gap-8 md:grid-cols-2">
         <div>
-          <h2 className="mb-4 text-xl font-semibold">Order Summary</h2>
+          <h2 className="mb-4 text-xl font-semibold">Ringkasan Pesanan</h2>
           <div className="rounded-lg border p-4 bg-white">
             {cart.map((item) => (
               <div key={item.id} className="mb-3 flex justify-between">
                 <div>
                   <p className="font-medium">{item.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    ${item.price.toFixed(2)} × {item.quantity}
+                    {formatRupiah(item.price)} × {item.quantity}
                   </p>
                 </div>
                 <p className="font-medium">
-                  ${(item.price * item.quantity).toFixed(2)}
+                  {formatRupiah(item.price * item.quantity)}
                 </p>
               </div>
             ))}
-
             <Separator className="my-4" />
-
             <div className="space-y-2">
               <div className="flex justify-between">
                 <p>Subtotal</p>
-                <p>${cartTotal.toFixed(2)}</p>
+                <p>{formatRupiah(cartTotal)}</p>
               </div>
               <div className="flex justify-between">
-                <p>Tax (10%)</p>
-                <p>${tax.toFixed(2)}</p>
+                <p>Pajak (11%)</p>
+                <p>{formatRupiah(tax)}</p>
               </div>
-              <div className="flex justify-between font-bold">
+              <div className="flex justify-between font-bold text-lg">
                 <p>Total</p>
-                <p>${grandTotal.toFixed(2)}</p>
+                <p>{formatRupiah(grandTotal)}</p>
               </div>
             </div>
           </div>
         </div>
 
         <div>
-          <h2 className="mb-4 text-xl font-semibold">Payment Method</h2>
+          <h2 className="mb-4 text-xl font-semibold">Metode Pembayaran</h2>
           <div className="rounded-lg border p-4 bg-white">
             <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
               <div className="flex items-center space-x-2 rounded-md border p-3">
                 <RadioGroupItem value="card" id="card" />
                 <Label htmlFor="card" className="flex items-center">
                   <CreditCard className="mr-2 h-4 w-4" />
-                  Credit/Debit Card
+                  Kartu Kredit/Debit
                 </Label>
               </div>
-
               <div className="mt-3 flex items-center space-x-2 rounded-md border p-3">
                 <RadioGroupItem value="cash" id="cash" />
                 <Label htmlFor="cash" className="flex items-center">
                   <Wallet className="mr-2 h-4 w-4" />
-                  Cash
+                  Tunai
                 </Label>
               </div>
             </RadioGroup>
-
             <Button className="mt-6 w-full" size="lg" onClick={handlePayment}>
-              Complete Payment
+              Selesaikan Pembayaran
             </Button>
           </div>
         </div>
