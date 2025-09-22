@@ -62,7 +62,6 @@ class DatabaseService {
     const customersJSON = localStorage.getItem(this.getStorageKey("customers"));
     if (!customersJSON) return [];
 
-    // Konversi string tanggal kembali menjadi objek Date
     const customers = JSON.parse(customersJSON);
     return customers.map((customer: any) => ({
       ...customer,
@@ -127,6 +126,7 @@ class DatabaseService {
 
   async saveTransaction(transaction: Transaction): Promise<void> {
     const transactions = await this.getTransactions();
+    console.log("Saving transaction with total:", transaction.total);
     transactions.push(transaction);
     localStorage.setItem(
       this.getStorageKey("transactions"),

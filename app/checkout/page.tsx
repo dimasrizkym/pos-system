@@ -47,7 +47,7 @@ export default function CheckoutPage() {
     if (customer) {
       const updatedCustomer = {
         ...customer,
-        loyaltyPoints: customer.loyaltyPoints + Math.floor(grandTotal / 1000), // 1 poin per Rp 1,000
+        loyaltyPoints: customer.loyaltyPoints + Math.floor(grandTotal / 20000),
         totalSpent: customer.totalSpent + grandTotal,
         lastVisit: new Date(),
       };

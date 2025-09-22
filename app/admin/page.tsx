@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -11,104 +11,110 @@ import {
   AlertTriangle,
   Eye,
   BarChart3,
-} from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { db } from "../services/database"
-import ProtectedRoute from "../components/protected-route"
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { db } from "../services/database";
+import ProtectedRoute from "../components/protected-route";
+import { formatRupiah } from "@/lib/currency";
+import { useRouter } from "next/navigation";
 
 interface DashboardStats {
-  totalSales: number
-  totalOrders: number
-  totalCustomers: number
-  lowStockItems: number
-  salesGrowth: number
-  orderGrowth: number
+  totalSales: number;
+  totalOrders: number;
+  totalCustomers: number;
+  lowStockItems: number;
+  salesGrowth: number;
+  orderGrowth: number;
   topProducts: Array<{
-    id: number
-    name: string
-    sales: number
-    growth: number
-  }>
+    id: string;
+    name: string;
+    sales: number;
+    growth: number;
+  }>;
   recentOrders: Array<{
-    id: string
-    customer: string
-    total: number
-    status: string
-    timestamp: Date
-  }>
-}
-
-const formatRupiah = (amount: number) => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
+    id: string;
+    customer: string;
+    total: number;
+    status: string;
+    timestamp: Date;
+  }>;
 }
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [timeRange, setTimeRange] = useState("7d")
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState("7d");
+  const router = useRouter();
 
   useEffect(() => {
-    loadDashboardData()
-  }, [timeRange])
+    loadDashboardData();
+  }, [timeRange]);
 
   const loadDashboardData = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      // Simulate loading dashboard data
-      const endDate = new Date()
-      const startDate = new Date()
-      startDate.setDate(endDate.getDate() - (timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90))
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(
+        endDate.getDate() -
+          (timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90)
+      );
 
-      const transactions = await db.getTransactions()
-      const customers = await db.getCustomers()
-      const lowStockItems = await db.getLowStockItems()
+      const transactions = await db.getTransactions();
+      const customers = await db.getCustomers();
+      const lowStockItems = await db.getLowStockItems();
 
       const filteredTransactions = transactions.filter((t) => {
-        const transactionDate = new Date(t.timestamp)
-        return transactionDate >= startDate && transactionDate <= endDate
-      })
+        const transactionDate = new Date(t.timestamp);
+        return transactionDate >= startDate && transactionDate <= endDate;
+      });
 
-      const totalSales = filteredTransactions.reduce((sum, t) => sum + t.total * 15000, 0)
-      const totalOrders = filteredTransactions.length
+      // PERBAIKAN: Hapus perkalian * 15000 yang salah
+      const totalSales = filteredTransactions.reduce(
+        (sum, t) => sum + t.total,
+        0
+      );
+      const totalOrders = filteredTransactions.length;
 
-      // Mock growth calculations (in real app, compare with previous period)
-      const salesGrowth = Math.random() * 20 - 10 // -10% to +10%
-      const orderGrowth = Math.random() * 15 - 5 // -5% to +10%
+      const salesGrowth = Math.random() * 20 - 10;
+      const orderGrowth = Math.random() * 15 - 5;
 
-      // Calculate top products
-      const productSales = new Map()
+      const productSales = new Map();
       filteredTransactions.forEach((transaction) => {
         transaction.items.forEach((item) => {
-          const existing = productSales.get(item.id) || { name: item.name, sales: 0 }
-          existing.sales += item.total * 15000
-          productSales.set(item.id, existing)
-        })
-      })
+          const existing = productSales.get(item.id) || {
+            name: item.name,
+            sales: 0,
+          };
+          // PERBAIKAN: Hapus perkalian * 15000 yang salah
+          existing.sales += item.total;
+          productSales.set(item.id, existing);
+        });
+      });
 
       const topProducts = Array.from(productSales.entries())
-        .map(([id, data]) => ({ id: Number(id), ...data, growth: Math.random() * 30 - 10 }))
+        .map(([id, data]) => ({
+          id: String(id),
+          ...(data as any),
+          growth: Math.random() * 30 - 10,
+        }))
         .sort((a, b) => b.sales - a.sales)
-        .slice(0, 5)
+        .slice(0, 5);
 
-      // Recent orders (mock data for demo)
       const recentOrders = filteredTransactions
         .slice(-5)
         .reverse()
         .map((t) => ({
           id: t.id,
           customer: `Pelanggan ${t.customerId || "Tamu"}`,
-          total: t.total * 15000,
+          // PERBAIKAN: Hapus perkalian * 15000 yang salah
+          total: t.total,
           status: "selesai",
           timestamp: new Date(t.timestamp),
-        }))
+        }));
 
       setStats({
         totalSales,
@@ -119,13 +125,13 @@ export default function AdminDashboard() {
         orderGrowth,
         topProducts,
         recentOrders,
-      })
+      });
     } catch (error) {
-      console.error("Failed to load dashboard data:", error)
+      console.error("Failed to load dashboard data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading || !stats) {
     return (
@@ -148,7 +154,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       </ProtectedRoute>
-    )
+    );
   }
 
   return (
@@ -179,18 +185,26 @@ export default function AdminDashboard() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Penjualan</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Penjualan
+              </CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatRupiah(stats.totalSales)}</div>
+              <div className="text-2xl font-bold">
+                {formatRupiah(stats.totalSales)}
+              </div>
               <div className="flex items-center text-xs text-muted-foreground">
                 {stats.salesGrowth >= 0 ? (
                   <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
                 ) : (
                   <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
                 )}
-                <span className={stats.salesGrowth >= 0 ? "text-green-500" : "text-red-500"}>
+                <span
+                  className={
+                    stats.salesGrowth >= 0 ? "text-green-500" : "text-red-500"
+                  }
+                >
                   {Math.abs(stats.salesGrowth).toFixed(1)}%
                 </span>
                 <span className="ml-1">dari periode sebelumnya</span>
@@ -200,7 +214,9 @@ export default function AdminDashboard() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Pesanan</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Pesanan
+              </CardTitle>
               <ShoppingCart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -211,7 +227,11 @@ export default function AdminDashboard() {
                 ) : (
                   <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
                 )}
-                <span className={stats.orderGrowth >= 0 ? "text-green-500" : "text-red-500"}>
+                <span
+                  className={
+                    stats.orderGrowth >= 0 ? "text-green-500" : "text-red-500"
+                  }
+                >
                   {Math.abs(stats.orderGrowth).toFixed(1)}%
                 </span>
                 <span className="ml-1">dari periode sebelumnya</span>
@@ -221,22 +241,30 @@ export default function AdminDashboard() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Pelanggan</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Pelanggan
+              </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalCustomers}</div>
-              <p className="text-xs text-muted-foreground">Basis pelanggan aktif</p>
+              <p className="text-xs text-muted-foreground">
+                Basis pelanggan aktif
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Peringatan Stok Rendah</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Peringatan Stok Rendah
+              </CardTitle>
               <AlertTriangle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-500">{stats.lowStockItems}</div>
+              <div className="text-2xl font-bold text-red-500">
+                {stats.lowStockItems}
+              </div>
               <p className="text-xs text-muted-foreground">Item perlu restok</p>
             </CardContent>
           </Card>
@@ -252,7 +280,10 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {stats.topProducts.map((product, index) => (
-                  <div key={product.id} className="flex items-center justify-between">
+                  <div
+                    key={product.id}
+                    className="flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-medium">
                         {index + 1}
@@ -260,20 +291,31 @@ export default function AdminDashboard() {
                       <div>
                         <p className="font-medium text-sm">{product.name}</p>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{formatRupiah(product.sales)}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatRupiah(product.sales)}
+                          </span>
                           {product.growth >= 0 ? (
-                            <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+                            <Badge
+                              variant="secondary"
+                              className="text-xs bg-green-100 text-green-700"
+                            >
                               +{product.growth.toFixed(1)}%
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-xs bg-red-100 text-red-700">
+                            <Badge
+                              variant="secondary"
+                              className="text-xs bg-red-100 text-red-700"
+                            >
                               {product.growth.toFixed(1)}%
                             </Badge>
                           )}
                         </div>
                       </div>
                     </div>
-                    <Progress value={(product.sales / stats.topProducts[0].sales) * 100} className="w-20" />
+                    <Progress
+                      value={(product.sales / stats.topProducts[0].sales) * 100}
+                      className="w-20"
+                    />
                   </div>
                 ))}
               </div>
@@ -284,7 +326,11 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Pesanan Terbaru</CardTitle>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/admin/orders")}
+              >
                 <Eye className="h-4 w-4 mr-2" />
                 Lihat Semua
               </Button>
@@ -292,13 +338,22 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {stats.recentOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between">
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between"
+                  >
                     <div>
-                      <p className="font-medium text-sm">#{order.id}</p>
-                      <p className="text-xs text-muted-foreground">{order.customer}</p>
+                      <p className="font-medium text-sm">
+                        #{order.id.slice(-6)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {order.customer}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-sm">{formatRupiah(order.total)}</p>
+                      <p className="font-medium text-sm">
+                        {formatRupiah(order.total)}
+                      </p>
                       <Badge variant="secondary" className="text-xs">
                         {order.status}
                       </Badge>
@@ -321,15 +376,24 @@ export default function AdminDashboard() {
                 <Package className="h-6 w-6" />
                 Tambah Produk
               </Button>
-              <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent">
+              <Button
+                variant="outline"
+                className="h-20 flex-col gap-2 bg-transparent"
+              >
                 <ShoppingCart className="h-6 w-6" />
                 Lihat Pesanan
               </Button>
-              <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent">
+              <Button
+                variant="outline"
+                className="h-20 flex-col gap-2 bg-transparent"
+              >
                 <Users className="h-6 w-6" />
                 Kelola Pelanggan
               </Button>
-              <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent">
+              <Button
+                variant="outline"
+                className="h-20 flex-col gap-2 bg-transparent"
+              >
                 <BarChart3 className="h-6 w-6" />
                 Lihat Analitik
               </Button>
@@ -338,5 +402,5 @@ export default function AdminDashboard() {
         </Card>
       </div>
     </ProtectedRoute>
-  )
+  );
 }
