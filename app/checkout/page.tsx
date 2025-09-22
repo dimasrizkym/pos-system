@@ -1,23 +1,25 @@
-"use client"
+// app/checkout/page.tsx
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, CreditCard, Wallet } from "lucide-react"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { useCart } from "../context/cart-context"
-import { db } from "../services/database"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, CreditCard, Wallet } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { useCart } from "../context/cart-context";
+import { db } from "../services/database";
 
 export default function CheckoutPage() {
-  const router = useRouter()
-  const { cart, cartTotal, clearCart, customer, discountAmount } = useCart()
-  const [paymentMethod, setPaymentMethod] = useState("card")
+  const router = useRouter();
+  const { cart, cartTotal, clearCart, customer } = useCart();
+  const [paymentMethod, setPaymentMethod] = useState("card");
 
-  const tax = cartTotal * 0.1
-  const grandTotal = cartTotal - discountAmount + tax
+  const tax = cartTotal * 0.1;
+  const grandTotal = cartTotal + tax; // Perhitungan total tanpa diskon
 
   const handlePayment = async () => {
     const transaction = {
@@ -32,15 +34,15 @@ export default function CheckoutPage() {
       })),
       subtotal: cartTotal,
       tax: tax,
-      discount: discountAmount,
+      discount: 0, // Set diskon menjadi 0
       total: grandTotal,
       paymentMethod: paymentMethod,
       timestamp: new Date(),
       receiptNumber: Math.floor(100000 + Math.random() * 900000).toString(),
-    }
+    };
 
     // Save transaction
-    await db.saveTransaction(transaction)
+    await db.saveTransaction(transaction);
 
     // Update customer loyalty points and spending
     if (customer) {
@@ -49,30 +51,32 @@ export default function CheckoutPage() {
         loyaltyPoints: customer.loyaltyPoints + Math.floor(grandTotal),
         totalSpent: customer.totalSpent + grandTotal,
         lastVisit: new Date(),
-      }
-      await db.saveCustomer(updatedCustomer)
+      };
+      await db.saveCustomer(updatedCustomer);
     }
 
     // Update inventory
     for (const item of cart) {
-      await db.updateStock(item.id, item.quantity)
+      await db.updateStock(item.id, item.quantity);
     }
 
-    router.push("/success")
-  }
+    router.push("/success");
+  };
 
   if (cart.length === 0) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Your cart is empty</h1>
-          <p className="mt-2 text-muted-foreground">Add some items to your cart before checkout</p>
+          <p className="mt-2 text-muted-foreground">
+            Add some items to your cart before checkout
+          </p>
           <Button className="mt-4" onClick={() => router.push("/")}>
             Return to POS
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -96,7 +100,9 @@ export default function CheckoutPage() {
                     ${item.price.toFixed(2)} × {item.quantity}
                   </p>
                 </div>
-                <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                <p className="font-medium">
+                  ${(item.price * item.quantity).toFixed(2)}
+                </p>
               </div>
             ))}
 
@@ -110,10 +116,6 @@ export default function CheckoutPage() {
               <div className="flex justify-between">
                 <p>Tax (10%)</p>
                 <p>${tax.toFixed(2)}</p>
-              </div>
-              <div className="flex justify-between">
-                <p>Discount</p>
-                <p>-${discountAmount.toFixed(2)}</p>
               </div>
               <div className="flex justify-between font-bold">
                 <p>Total</p>
@@ -151,5 +153,5 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
