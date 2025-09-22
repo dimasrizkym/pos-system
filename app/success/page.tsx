@@ -12,19 +12,17 @@ export default function SuccessPage() {
   const router = useRouter();
   const { cart, cartTotal, clearCart } = useCart();
 
-  const tax = cartTotal * 0.11;
-  const grandTotal = cartTotal + tax;
+  const grandTotal = cartTotal;
   const receiptNumber = Math.floor(100000 + Math.random() * 900000);
   const date = new Date().toLocaleString("id-ID");
 
   useEffect(() => {
-    if (cart.length === 0) {
-      router.push("/");
-    }
-  }, [cart, router]);
+    return () => {
+      clearCart();
+    };
+  }, []);
 
   const handleBackToPOS = () => {
-    clearCart();
     router.push("/");
   };
 
@@ -33,7 +31,18 @@ export default function SuccessPage() {
   };
 
   if (cart.length === 0) {
-    return null;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">
+            Tidak ada transaksi untuk ditampilkan
+          </h1>
+          <Button className="mt-4" onClick={() => router.push("/")}>
+            Kembali ke POS
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -72,10 +81,6 @@ export default function SuccessPage() {
           <div className="flex justify-between">
             <p>Subtotal</p>
             <p>{formatRupiah(cartTotal)}</p>
-          </div>
-          <div className="flex justify-between">
-            <p>Pajak (11%)</p>
-            <p>{formatRupiah(tax)}</p>
           </div>
           <div className="flex justify-between font-bold text-lg">
             <p>Total</p>

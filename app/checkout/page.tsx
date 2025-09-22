@@ -1,11 +1,8 @@
-// app/checkout/page.tsx
-
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CreditCard, Wallet } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -19,8 +16,7 @@ export default function CheckoutPage() {
   const { cart, cartTotal, clearCart, customer } = useCart();
   const [paymentMethod, setPaymentMethod] = useState("card");
 
-  const tax = cartTotal * 0.11; // Pajak 11%
-  const grandTotal = cartTotal + tax;
+  const grandTotal = cartTotal;
 
   const handlePayment = async () => {
     const transaction = {
@@ -34,7 +30,7 @@ export default function CheckoutPage() {
         total: item.price * item.quantity,
       })),
       subtotal: cartTotal,
-      tax: tax,
+      tax: 0,
       discount: 0,
       total: grandTotal,
       paymentMethod: paymentMethod,
@@ -47,12 +43,13 @@ export default function CheckoutPage() {
     if (customer) {
       const updatedCustomer = {
         ...customer,
-        loyaltyPoints: customer.loyaltyPoints + Math.floor(grandTotal / 20000),
+        loyaltyPoints: customer.loyaltyPoints + Math.floor(grandTotal / 1000),
         totalSpent: customer.totalSpent + grandTotal,
         lastVisit: new Date(),
       };
       await db.saveCustomer(updatedCustomer);
     }
+
     router.push("/success");
   };
 
@@ -60,12 +57,12 @@ export default function CheckoutPage() {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Your cart is empty</h1>
+          <h1 className="text-2xl font-bold">Keranjang Anda kosong</h1>
           <p className="mt-2 text-muted-foreground">
-            Add some items to your cart before checkout
+            Tambahkan item ke keranjang sebelum checkout
           </p>
           <Button className="mt-4" onClick={() => router.push("/")}>
-            Return to POS
+            Kembali ke POS
           </Button>
         </div>
       </div>
@@ -104,10 +101,7 @@ export default function CheckoutPage() {
                 <p>Subtotal</p>
                 <p>{formatRupiah(cartTotal)}</p>
               </div>
-              <div className="flex justify-between">
-                <p>Pajak (11%)</p>
-                <p>{formatRupiah(tax)}</p>
-              </div>
+              {/* PERBAIKAN: Baris Pajak Dihapus */}
               <div className="flex justify-between font-bold text-lg">
                 <p>Total</p>
                 <p>{formatRupiah(grandTotal)}</p>
@@ -120,13 +114,13 @@ export default function CheckoutPage() {
           <h2 className="mb-4 text-xl font-semibold">Metode Pembayaran</h2>
           <div className="rounded-lg border p-4 bg-white">
             <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-              <div className="flex items-center space-x-2 rounded-md border p-3">
+              {/* <div className="flex items-center space-x-2 rounded-md border p-3">
                 <RadioGroupItem value="card" id="card" />
                 <Label htmlFor="card" className="flex items-center">
                   <CreditCard className="mr-2 h-4 w-4" />
                   Kartu Kredit/Debit
                 </Label>
-              </div>
+              </div> */}
               <div className="mt-3 flex items-center space-x-2 rounded-md border p-3">
                 <RadioGroupItem value="cash" id="cash" />
                 <Label htmlFor="cash" className="flex items-center">

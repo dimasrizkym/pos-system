@@ -94,12 +94,11 @@ export default function OrdersPage() {
         };
       }
     );
-
-    setOrders(ordersWithCustomerInfo.reverse()); // Most recent first
+    setOrders(ordersWithCustomerInfo.reverse());
   };
+
   const filterOrders = () => {
     let filtered = orders;
-
     if (searchQuery) {
       filtered = filtered.filter(
         (order) =>
@@ -112,16 +111,13 @@ export default function OrdersPage() {
           order.customerEmail?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
     if (statusFilter !== "all") {
-      // For demo purposes, we'll assign random statuses
       filtered = filtered.filter((_, index) => {
         const statuses = ["completed", "pending", "processing"];
         const status = statuses[index % statuses.length];
         return status === statusFilter;
       });
     }
-
     setFilteredOrders(filtered);
   };
 
@@ -147,7 +143,6 @@ export default function OrdersPage() {
   };
 
   const handlePrintReceipt = (order: OrderDetails) => {
-    // In a real app, this would trigger receipt printing
     console.log("Printing receipt for order:", order.receiptNumber);
   };
 
@@ -454,16 +449,6 @@ export default function OrdersPage() {
                     <span>Subtotal</span>
                     <span>{formatRupiah(selectedOrder.subtotal)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Tax</span>
-                    <span>{formatRupiah(selectedOrder.tax)}</span>
-                  </div>
-                  {selectedOrder.discount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Discount</span>
-                      <span>-{formatRupiah(selectedOrder.discount)}</span>
-                    </div>
-                  )}
                   <Separator />
                   <div className="flex justify-between font-medium text-lg">
                     <span>Total</span>
