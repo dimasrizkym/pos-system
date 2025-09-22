@@ -15,7 +15,7 @@ export interface Transaction {
   id: string;
   customerId?: string;
   items: Array<{
-    id: number;
+    id: string; // Diubah dari number ke string untuk konsistensi
     name: string;
     price: number;
     quantity: number;
@@ -45,7 +45,7 @@ export interface SalesReport {
   totalTransactions: number;
   averageTransaction: number;
   topProducts: Array<{
-    id: number;
+    id: string; // Diubah dari number ke string
     name: string;
     quantity: number;
     revenue: number;
@@ -59,8 +59,16 @@ class DatabaseService {
 
   // Customer Management
   async getCustomers(): Promise<Customer[]> {
-    const customers = localStorage.getItem(this.getStorageKey("customers"));
-    return customers ? JSON.parse(customers) : [];
+    const customersJSON = localStorage.getItem(this.getStorageKey("customers"));
+    if (!customersJSON) return [];
+
+    // Konversi string tanggal kembali menjadi objek Date
+    const customers = JSON.parse(customersJSON);
+    return customers.map((customer: any) => ({
+      ...customer,
+      createdAt: new Date(customer.createdAt),
+      lastVisit: new Date(customer.lastVisit),
+    }));
   }
 
   async getCustomer(id: string): Promise<Customer | null> {
@@ -84,22 +92,37 @@ class DatabaseService {
     );
   }
 
+  async deleteCustomer(customerId: string): Promise<void> {
+    let customers = await this.getCustomers();
+    customers = customers.filter((c) => c.id !== customerId);
+    localStorage.setItem(
+      this.getStorageKey("customers"),
+      JSON.stringify(customers)
+    );
+  }
+
   async searchCustomers(query: string): Promise<Customer[]> {
     const customers = await this.getCustomers();
     return customers.filter(
       (c) =>
         c.name.toLowerCase().includes(query.toLowerCase()) ||
         c.email.toLowerCase().includes(query.toLowerCase()) ||
-        c.phone.includes(query)
+        (c.phone && c.phone.includes(query))
     );
   }
 
   // Transaction Management
   async getTransactions(): Promise<Transaction[]> {
-    const transactions = localStorage.getItem(
+    const transactionsJSON = localStorage.getItem(
       this.getStorageKey("transactions")
     );
-    return transactions ? JSON.parse(transactions) : [];
+    if (!transactionsJSON) return [];
+
+    const transactions = JSON.parse(transactionsJSON);
+    return transactions.map((transaction: any) => ({
+      ...transaction,
+      timestamp: new Date(transaction.timestamp),
+    }));
   }
 
   async saveTransaction(transaction: Transaction): Promise<void> {
@@ -125,7 +148,11 @@ class DatabaseService {
       await this.saveInventory(defaultInventory);
       return defaultInventory;
     }
-    return JSON.parse(inventory);
+    const parsedInventory = JSON.parse(inventory);
+    return parsedInventory.map((item: any) => ({
+      ...item,
+      lastRestocked: new Date(item.lastRestocked),
+    }));
   }
 
   async saveInventory(inventory: InventoryItem[]): Promise<void> {
@@ -135,7 +162,7 @@ class DatabaseService {
     );
   }
 
-  async updateStock(productId: number, quantity: number): Promise<void> {
+  async updateStock(productId: string, quantity: number): Promise<void> {
     const inventory = await this.getInventory();
     const item = inventory.find((i) => i.id === productId);
     if (item) {
@@ -170,7 +197,7 @@ class DatabaseService {
 
     // Calculate top products
     const productSales = new Map<
-      number,
+      string,
       { name: string; quantity: number; revenue: number }
     >();
 
@@ -204,7 +231,7 @@ class DatabaseService {
   private getDefaultInventory(): InventoryItem[] {
     return [
       {
-        id: 1,
+        id: "1",
         name: "Cheeseburger",
         price: 8.99,
         image: "/classic-beef-burger.png",
@@ -216,7 +243,7 @@ class DatabaseService {
         cost: 4.5,
       },
       {
-        id: 2,
+        id: "2",
         name: "Pepperoni Pizza",
         price: 12.99,
         image: "/delicious-pizza.png",
