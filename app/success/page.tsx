@@ -1,25 +1,39 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useCart } from "../context/cart-context";
 import { formatRupiah } from "@/lib/currency";
+import type { CartItem } from "../context/cart-context";
+
+interface ReceiptData {
+  receiptNumber: string;
+  created_at: string;
+  items: CartItem[];
+  subtotal: number;
+  total: number;
+}
 
 export default function SuccessPage() {
   const router = useRouter();
-  const { cart, cartTotal, clearCart } = useCart();
-
-  const grandTotal = cartTotal;
-  const receiptNumber = Math.floor(100000 + Math.random() * 900000);
-  const date = new Date().toLocaleString("id-ID");
+  const [receipt, setReceipt] = useState<ReceiptData | null>(null);
 
   useEffect(() => {
-    return () => {
-      clearCart();
-    };
+    const lastTransactionJSON = sessionStorage.getItem("lastTransaction");
+    if (lastTransactionJSON) {
+      try {
+        const transactionData = JSON.parse(lastTransactionJSON);
+        setReceipt(transactionData);
+        sessionStorage.removeItem("lastTransaction");
+      } catch (error) {
+        console.error(
+          "Failed to parse transaction from session storage",
+          error
+        );
+      }
+    }
   }, []);
 
   const handleBackToPOS = () => {
@@ -30,7 +44,7 @@ export default function SuccessPage() {
     window.print();
   };
 
-  if (cart.length === 0) {
+  if (!receipt) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
@@ -60,12 +74,14 @@ export default function SuccessPage() {
           Terima kasih atas pembelian Anda!
         </p>
         <div className="mb-6 text-center">
-          <p className="font-medium">Struk #{receiptNumber}</p>
-          <p className="text-sm text-muted-foreground">{date}</p>
+          <p className="font-medium">Struk #{receipt.receiptNumber}</p>
+          <p className="text-sm text-muted-foreground">
+            {new Date(receipt.created_at).toLocaleString("id-ID")}
+          </p>
         </div>
         <Separator className="my-4" />
         <div className="space-y-3">
-          {cart.map((item) => (
+          {receipt.items.map((item) => (
             <div key={item.id} className="flex justify-between">
               <div>
                 <p>
@@ -80,11 +96,11 @@ export default function SuccessPage() {
         <div className="space-y-2">
           <div className="flex justify-between">
             <p>Subtotal</p>
-            <p>{formatRupiah(cartTotal)}</p>
+            <p>{formatRupiah(receipt.subtotal)}</p>
           </div>
           <div className="flex justify-between font-bold text-lg">
             <p>Total</p>
-            <p>{formatRupiah(grandTotal)}</p>
+            <p>{formatRupiah(receipt.total)}</p>
           </div>
         </div>
         <div className="mt-6 flex flex-col gap-3 print:hidden">

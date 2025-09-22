@@ -8,52 +8,56 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "../context/cart-context";
-import { db } from "../services/database";
+import { useAuth } from "../context/auth-context";
+import { supabaseService } from "../services/supabase-service";
 import { formatRupiah } from "@/lib/currency";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, cartTotal, clearCart, customer } = useCart();
+  const { user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState("card");
+  const [isLoading, setIsLoading] = useState(false);
 
   const grandTotal = cartTotal;
 
   const handlePayment = async () => {
-    const transaction = {
-      id: Date.now().toString(),
-      customerId: customer?.id,
-      items: cart.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        total: item.price * item.quantity,
-      })),
-      subtotal: cartTotal,
-      tax: 0,
-      discount: 0,
-      total: grandTotal,
-      paymentMethod: paymentMethod,
-      timestamp: new Date(),
-      receiptNumber: Math.floor(100000 + Math.random() * 900000).toString(),
-    };
-
-    await db.saveTransaction(transaction);
-
-    if (customer) {
-      const updatedCustomer = {
-        ...customer,
-        loyaltyPoints: customer.loyaltyPoints + Math.floor(grandTotal / 1000),
-        totalSpent: customer.totalSpent + grandTotal,
-        lastVisit: new Date(),
+    if (cart.length === 0) return;
+    setIsLoading(true);
+    try {
+      const transactionData = {
+        user_id: user?.id || null,
+        customer_id: customer?.id || null,
+        total: grandTotal,
+        payment_method: paymentMethod,
+        receiptNumber: Math.floor(100000 + Math.random() * 900000).toString(),
+        items: cart,
       };
-      await db.saveCustomer(updatedCustomer);
-    }
 
-    router.push("/success");
+      const newTransaction = await supabaseService.createTransaction(
+        transactionData
+      );
+
+      sessionStorage.setItem(
+        "lastTransaction",
+        JSON.stringify({
+          ...newTransaction,
+          items: cart,
+          subtotal: cartTotal,
+        })
+      );
+
+      clearCart();
+      router.push("/success");
+    } catch (error) {
+      console.error("Payment failed:", error);
+      alert("Pembayaran Gagal: " + (error as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  if (cart.length === 0) {
+  if (cart.length === 0 && !isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
@@ -101,7 +105,6 @@ export default function CheckoutPage() {
                 <p>Subtotal</p>
                 <p>{formatRupiah(cartTotal)}</p>
               </div>
-              {/* PERBAIKAN: Baris Pajak Dihapus */}
               <div className="flex justify-between font-bold text-lg">
                 <p>Total</p>
                 <p>{formatRupiah(grandTotal)}</p>
@@ -114,13 +117,13 @@ export default function CheckoutPage() {
           <h2 className="mb-4 text-xl font-semibold">Metode Pembayaran</h2>
           <div className="rounded-lg border p-4 bg-white">
             <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-              {/* <div className="flex items-center space-x-2 rounded-md border p-3">
+              <div className="flex items-center space-x-2 rounded-md border p-3">
                 <RadioGroupItem value="card" id="card" />
                 <Label htmlFor="card" className="flex items-center">
                   <CreditCard className="mr-2 h-4 w-4" />
                   Kartu Kredit/Debit
                 </Label>
-              </div> */}
+              </div>
               <div className="mt-3 flex items-center space-x-2 rounded-md border p-3">
                 <RadioGroupItem value="cash" id="cash" />
                 <Label htmlFor="cash" className="flex items-center">
@@ -129,8 +132,13 @@ export default function CheckoutPage() {
                 </Label>
               </div>
             </RadioGroup>
-            <Button className="mt-6 w-full" size="lg" onClick={handlePayment}>
-              Selesaikan Pembayaran
+            <Button
+              className="mt-6 w-full"
+              size="lg"
+              onClick={handlePayment}
+              disabled={isLoading}
+            >
+              {isLoading ? "Memproses..." : "Selesaikan Pembayaran"}
             </Button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import type { CartItem } from "../context/cart-context";
 
 export interface Category {
   id: string;
@@ -11,13 +12,41 @@ export interface Product {
   id: string;
   name: string;
   price: number;
-  image: string;
+  image: string | null;
   category_id: string;
   created_at: string;
 }
 
 export interface ProductWithCategory extends Product {
   category: Category;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  created_at: string;
+}
+
+export interface Transaction {
+  id: string;
+  user_id: string | null;
+  customer_id: string | null;
+  total: number;
+  payment_method: string;
+  created_at: string;
+  receiptNumber: string;
+  transaction_items: TransactionItem[];
+  customer?: { name: string; email: string };
+}
+
+export interface TransactionItem {
+  id: string;
+  transaction_id: string;
+  product_id: string;
+  quantity: number;
+  price: number;
 }
 
 class SupabaseService {
@@ -211,6 +240,122 @@ class SupabaseService {
 
     console.log("[v0] Product counts by category:", counts);
     return counts;
+  }
+  // Customer Management
+  async getCustomers(): Promise<Customer[]> {
+    const { data, error } = await this.supabase
+      .from("customers")
+      .select("*")
+      .order("name");
+    if (error) throw error;
+    return data || [];
+  }
+
+  async createCustomer(
+    customerData: Omit<Customer, "id" | "created_at">
+  ): Promise<Customer> {
+    const { data, error } = await this.supabase
+      .from("customers")
+      .insert(customerData)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async updateCustomer(
+    id: string,
+    updates: Partial<Customer>
+  ): Promise<Customer> {
+    const { data, error } = await this.supabase
+      .from("customers")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async deleteCustomer(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("customers")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+  }
+
+  // Transaction Management
+  async createTransaction(transactionData: {
+    user_id: string | null;
+    customer_id: string | null;
+    total: number;
+    payment_method: string;
+    receiptNumber: string;
+    items: CartItem[];
+  }): Promise<Transaction> {
+    // 1. Buat record transaksi utama
+    const { data: newTransaction, error: transactionError } =
+      await this.supabase
+        .from("transactions")
+        .insert({
+          user_id: transactionData.user_id,
+          customer_id: transactionData.customer_id,
+          total: transactionData.total,
+          payment_method: transactionData.payment_method,
+          receiptNumber: transactionData.receiptNumber,
+        })
+        .select()
+        .single();
+
+    if (transactionError) {
+      console.error("Error creating transaction:", transactionError);
+      throw transactionError;
+    }
+
+    // 2. Siapkan item-item transaksi
+    const transactionItems = transactionData.items.map((item) => ({
+      transaction_id: newTransaction.id,
+      product_id: item.id,
+      quantity: item.quantity,
+      price: item.price,
+    }));
+
+    // 3. Masukkan semua item ke tabel transaction_items
+    const { error: itemsError } = await this.supabase
+      .from("transaction_items")
+      .insert(transactionItems);
+
+    if (itemsError) {
+      console.error("Error creating transaction items:", itemsError);
+      // Optional: Hapus transaksi utama jika item gagal dibuat
+      await this.supabase
+        .from("transactions")
+        .delete()
+        .eq("id", newTransaction.id);
+      throw itemsError;
+    }
+
+    return { ...newTransaction, transaction_items: transactionItems };
+  }
+
+  async getTransactionsWithDetails(): Promise<Transaction[]> {
+    const { data, error } = await this.supabase
+      .from("transactions")
+      .select(
+        `
+            *,
+            transaction_items(*),
+            customer:customers(name, email)
+        `
+      )
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching transactions:", error);
+      throw error;
+    }
+    return data || [];
   }
 }
 

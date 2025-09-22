@@ -7,6 +7,7 @@ import {
   type ReactNode,
   useEffect,
 } from "react";
+import type { Customer } from "../services/supabase-service";
 
 export interface Product {
   id: string;
@@ -16,29 +17,7 @@ export interface Product {
   category: string;
 }
 
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  loyaltyPoints: number;
-  totalSpent: number;
-  purchaseHistory: Transaction[];
-}
-
-interface Transaction {
-  id: string;
-  customerId?: string;
-  items: CartItem[];
-  subtotal: number;
-  tax: number;
-  total: number;
-  paymentMethod: string;
-  timestamp: Date;
-  receiptNumber: string;
-}
-
-interface CartItem extends Product {
+export interface CartItem extends Product {
   quantity: number;
 }
 
@@ -60,7 +39,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
 
-  // Load cart from localStorage on initial render
   useEffect(() => {
     const savedCart = localStorage.getItem("cart");
     if (savedCart) {
@@ -72,7 +50,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Save cart to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
@@ -80,7 +57,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addToCart = (product: Product) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
-
       if (existingItem) {
         return prevCart.map((item) =>
           item.id === product.id
@@ -88,7 +64,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
             : item
         );
       }
-
       return [...prevCart, { ...product, quantity: 1 }];
     });
   };
@@ -102,7 +77,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeFromCart(productId);
       return;
     }
-
     setCart((prevCart) =>
       prevCart.map((item) =>
         item.id === productId ? { ...item, quantity } : item
