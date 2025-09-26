@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Settings, LogOut, History } from "lucide-react";
+import { Search, Settings, LogOut, History, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import ProductGrid from "./components/product-grid";
 import CartSidebar from "./components/cart-sidebar";
@@ -10,10 +10,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import ProtectedRoute from "./components/protected-route";
 import { useAuth } from "./context/auth-context";
+import { cn } from "@/lib/utils";
 
 export default function POSPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false); // Default tertutup
   const { user, logout } = useAuth();
   const router = useRouter();
 
@@ -25,11 +27,6 @@ export default function POSPage() {
   return (
     <ProtectedRoute>
       <div className="flex h-screen bg-background">
-        <CategorySidebar
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-        />
-
         <main className="flex-1 flex flex-col h-screen overflow-hidden">
           <div className="sticky top-0 z-10 bg-background p-4 border-b">
             <div className="flex items-center justify-between gap-4">
@@ -54,6 +51,18 @@ export default function POSPage() {
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
+                  onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                >
+                  Kategori
+                  <ChevronRight
+                    className={cn(
+                      "h-4 w-4 ml-2 transition-transform duration-200",
+                      isCategoryOpen && "rotate-90"
+                    )}
+                  />
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => router.push("/transactions")}
                 >
                   <History className="h-4 w-4 mr-2" />
@@ -76,11 +85,20 @@ export default function POSPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto p-4">
-            <ProductGrid
-              category={selectedCategory}
-              searchQuery={searchQuery}
+          <div className="flex-1 flex flex-col overflow-y-auto">
+            <CategorySidebar
+              isOpen={isCategoryOpen}
+              onOpenChange={setIsCategoryOpen}
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
             />
+
+            <div className="p-4">
+              <ProductGrid
+                category={selectedCategory}
+                searchQuery={searchQuery}
+              />
+            </div>
           </div>
         </main>
 
