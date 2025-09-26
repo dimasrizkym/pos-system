@@ -1,17 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Eye, Printer, RefreshCw, MoreHorizontal } from "lucide-react";
+import { Search, Eye, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import {
   supabaseService,
@@ -19,26 +26,11 @@ import {
 } from "../../services/supabase-service";
 import { formatRupiah } from "@/lib/currency";
 
-const orderStatuses = [
-  {
-    value: "completed",
-    label: "Completed",
-    color: "bg-green-100 text-green-800",
-  },
-  {
-    value: "pending",
-    label: "Pending",
-    color: "bg-yellow-100 text-yellow-800",
-  },
-  { value: "cancelled", label: "Cancelled", color: "bg-red-100 text-red-800" },
-];
-
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Transaction[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Transaction[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Transaction | null>(null);
-  const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,67 +41,46 @@ export default function OrdersPage() {
     let filtered = orders;
     if (searchQuery) {
       filtered = orders.filter(
-        (order) =>
-          order.receiptNumber
-            ?.toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          order.customer?.name
-            ?.toLowerCase()
-            .includes(searchQuery.toLowerCase())
+        (t) =>
+          t.receiptNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.customer?.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     setFilteredOrders(filtered);
-  }, [orders, searchQuery]);
+  }, [searchQuery, orders]);
 
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const allOrders = await supabaseService.getTransactionsWithDetails();
-      setOrders(allOrders);
-      setFilteredOrders(allOrders);
+      const dbTransactions = await supabaseService.getTransactionsWithDetails();
+      // Sekarang 'setOrders' akan ditemukan dan tidak error lagi
+      setOrders(dbTransactions);
+      setFilteredOrders(dbTransactions);
     } catch (error) {
-      console.error("Failed to load orders:", error);
+      console.error("Failed to load transactions:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewOrder = (order: Transaction) => {
-    setSelectedOrder(order);
-    setShowOrderDetails(true);
-  };
-
-  const handlePrintReceipt = () => {
-    window.print();
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("id-ID", {
-      year: "numeric",
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleString("id-ID", {
+      day: "2-digit",
       month: "short",
-      day: "numeric",
+      year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
 
-  const getStatusBadge = (index: number) => {
-    // This is a placeholder logic as we don't have status in db
-    const status = orderStatuses[index % orderStatuses.length];
-    return <Badge className={status.color}>{status.label}</Badge>;
-  };
-
-  if (loading) {
-    return <div>Loading orders...</div>;
-  }
+  if (loading) return <div className="p-6">Memuat riwayat pesanan...</div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold">Pesanan</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold">Riwayat Pesanan</h1>
           <p className="text-muted-foreground">
-            Kelola dan lacak semua pesanan
+            Lacak semua transaksi yang terjadi
           </p>
         </div>
         <Button onClick={loadOrders}>
@@ -120,169 +91,174 @@ export default function OrdersPage() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cari berdasarkan ID struk atau nama pelanggan..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+          <Input
+            placeholder="Cari ID Struk atau Nama Pelanggan..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Riwayat Pesanan</CardTitle>
-        </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <div className="min-w-full">
-              <div className="grid grid-cols-12 gap-4 p-4 border-b bg-muted/50 text-sm font-medium">
-                <div className="col-span-2">Struk ID</div>
-                <div className="col-span-3">Pelanggan</div>
-                <div className="col-span-3">Tanggal</div>
-                <div className="col-span-1">Item</div>
-                <div className="col-span-2">Total</div>
-                <div className="col-span-1">Aksi</div>
-              </div>
-
-              <div className="divide-y">
-                {filteredOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="grid grid-cols-12 gap-4 p-4 hover:bg-muted/50 items-center"
-                  >
-                    <div className="col-span-2 font-medium">
-                      #{order.receiptNumber}
-                    </div>
-                    <div className="col-span-3">
-                      {order.customer?.name || "Tamu"}
-                    </div>
-                    <div className="col-span-3 text-sm">
-                      {formatDate(order.created_at)}
-                    </div>
-                    <div className="col-span-1 text-sm">
-                      {order.transaction_items.reduce(
-                        (acc, item) => acc + item.quantity,
-                        0
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Struk</TableHead>
+                <TableHead>Pelanggan</TableHead>
+                <TableHead>Total Belanja</TableHead>
+                <TableHead>Hutang Baru</TableHead>
+                <TableHead>Kembalian</TableHead>
+                <TableHead>Poin Didapat</TableHead>
+                <TableHead>Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredOrders.length > 0 ? (
+                filteredOrders.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell>
+                      <div className="font-medium">#{order.receiptNumber}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {formatDate(order.created_at)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">
+                        {order.customer?.name || "Tamu"}
+                      </div>
+                      {order.customer && (
+                        <div className="text-sm text-muted-foreground">
+                          Hutang Akhir:{" "}
+                          {formatRupiah(order.customer.outstanding_debt)}
+                        </div>
                       )}
-                    </div>
-                    <div className="col-span-2 font-medium">
-                      {formatRupiah(order.total)}
-                    </div>
-                    <div className="col-span-1">
+                    </TableCell>
+                    <TableCell>{formatRupiah(order.total)}</TableCell>
+                    <TableCell
+                      className={
+                        order.debt_incurred > 0
+                          ? "text-red-600 font-medium"
+                          : ""
+                      }
+                    >
+                      {formatRupiah(order.debt_incurred)}
+                    </TableCell>
+                    <TableCell className="text-green-600">
+                      {formatRupiah(order.change)}
+                    </TableCell>
+                    <TableCell>{order.points_earned} Poin</TableCell>
+                    <TableCell>
                       <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleViewOrder(order)}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedOrder(order)}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4 mr-2" />
+                        Detail
                       </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {filteredOrders.length === 0 && (
-              <div className="p-12 text-center text-muted-foreground">
-                <p>Tidak ada pesanan ditemukan.</p>
-              </div>
-            )}
-          </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center h-24">
+                    Tidak ada data transaksi ditemukan.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog
+        open={!!selectedOrder}
+        onOpenChange={(isOpen) => !isOpen && setSelectedOrder(null)}
+      >
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              Detail Pesanan - #{selectedOrder?.receiptNumber}
+              Detail Transaksi #{selectedOrder?.receiptNumber}
             </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              {selectedOrder && formatDate(selectedOrder.created_at)}
+            </p>
           </DialogHeader>
           {selectedOrder && (
-            <div className="space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <h3 className="font-medium mb-2">Informasi Pelanggan</h3>
-                  <div className="space-y-1 text-sm">
-                    <p>
-                      <span className="font-medium">Nama:</span>{" "}
-                      {selectedOrder.customer?.name || "Tamu"}
-                    </p>
-                    {selectedOrder.customer?.email && (
-                      <p>
-                        <span className="font-medium">Email:</span>{" "}
-                        {selectedOrder.customer.email}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-medium mb-2">Informasi Pesanan</h3>
-                  <div className="space-y-1 text-sm">
-                    <p>
-                      <span className="font-medium">Tanggal:</span>{" "}
-                      {formatDate(selectedOrder.created_at)}
-                    </p>
-                    <p>
-                      <span className="font-medium">Pembayaran:</span>{" "}
-                      {selectedOrder.payment_method}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
+            <div className="space-y-4 text-sm pt-2">
               <div>
-                <h3 className="font-medium mb-4">Item Pesanan</h3>
-                <div className="space-y-3">
+                <h4 className="font-semibold mb-2">Item Dibeli:</h4>
+                <div className="space-y-1 max-h-32 overflow-y-auto pr-2">
                   {selectedOrder.transaction_items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
+                      className="flex justify-between text-muted-foreground"
                     >
-                      <div>
-                        <p className="font-medium">
-                          Item ID: {item.product_id.slice(0, 8)}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatRupiah(item.price)} × {item.quantity}
-                        </p>
-                      </div>
-                      <p className="font-medium">
-                        {formatRupiah(item.price * item.quantity)}
-                      </p>
+                      <span>
+                        {item.quantity}x (ID: ...{item.product_id.slice(-6)})
+                      </span>
+                      <span>{formatRupiah(item.price * item.quantity)}</span>
                     </div>
                   ))}
                 </div>
               </div>
-
               <Separator />
-
-              <div>
-                <h3 className="font-medium mb-4">Ringkasan Pesanan</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between font-medium text-lg">
-                    <span>Total</span>
-                    <span>{formatRupiah(selectedOrder.total)}</span>
-                  </div>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span>Total Belanja:</span>
+                  <span className="font-medium">
+                    {formatRupiah(selectedOrder.total)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tunai Dibayar:</span>
+                  <span>{formatRupiah(selectedOrder.cash_paid)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Kembalian:</span>
+                  <span className="text-green-600 font-medium">
+                    {formatRupiah(selectedOrder.change)}
+                  </span>
                 </div>
               </div>
-              <div className="flex gap-2 pt-4 print:hidden">
-                <Button onClick={handlePrintReceipt}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Cetak Struk
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowOrderDetails(false)}
-                >
-                  Tutup
-                </Button>
+              <Separator />
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span>Hutang Transaksi Ini:</span>
+                  <span
+                    className={
+                      selectedOrder.debt_incurred > 0
+                        ? "text-red-600 font-medium"
+                        : ""
+                    }
+                  >
+                    {formatRupiah(selectedOrder.debt_incurred)}
+                  </span>
+                </div>
+                {selectedOrder.customer && (
+                  <div className="flex justify-between">
+                    <span>Total Hutang Pelanggan:</span>
+                    <span className="font-bold">
+                      {formatRupiah(selectedOrder.customer.outstanding_debt)}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <Separator />
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span>Poin Didapat:</span>
+                  <span>{selectedOrder.points_earned} Poin</span>
+                </div>
+                {selectedOrder.customer && (
+                  <div className="flex justify-between">
+                    <span>Total Poin Pelanggan:</span>
+                    <span className="font-bold">
+                      {selectedOrder.customer.loyalty_points} Poin
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}

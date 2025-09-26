@@ -117,6 +117,7 @@ export default function CustomersPage() {
       await loadCustomers();
     } catch (error) {
       console.error("Failed to save customer:", error);
+      alert("Gagal menyimpan pelanggan. Email mungkin sudah ada.");
     }
   };
 

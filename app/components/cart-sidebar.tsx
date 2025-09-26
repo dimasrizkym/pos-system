@@ -40,12 +40,11 @@ export default function CartSidebar() {
   } = useCart();
 
   const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [cashPaid, setCashPaid] = useState(0); // State untuk nilai angka
-  const [displayCashPaid, setDisplayCashPaid] = useState(""); // State untuk nilai tampilan
+  const [cashPaid, setCashPaid] = useState(0);
+  const [displayCashPaid, setDisplayCashPaid] = useState("");
   const [includeDebt, setIncludeDebt] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- Kalkulasi Real-time ---
   const totalToPay = useMemo(() => {
     if (customer && includeDebt) {
       return cartTotal + customer.outstanding_debt;
@@ -66,10 +65,8 @@ export default function CartSidebar() {
     [cartTotal]
   );
 
-  // Fungsi untuk menangani input uang tunai
   const handleCashPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
-    // Hapus semua karakter non-digit
     const numericValue = parseInt(rawValue.replace(/[^0-9]/g, ""), 10);
 
     if (isNaN(numericValue)) {
@@ -77,7 +74,6 @@ export default function CartSidebar() {
       setDisplayCashPaid("");
     } else {
       setCashPaid(numericValue);
-      // Format dengan titik sebagai pemisah ribuan
       setDisplayCashPaid(new Intl.NumberFormat("id-ID").format(numericValue));
     }
   };
@@ -94,6 +90,7 @@ export default function CartSidebar() {
       const transactionStatus: "unpaid" | "paid" =
         newDebt > 0 ? "unpaid" : "paid";
 
+      // PERBAIKAN: Tambahkan properti yang hilang di sini
       const transactionData = {
         user_id: user?.id || null,
         customer_id: customer?.id || null,
@@ -102,6 +99,10 @@ export default function CartSidebar() {
         receiptNumber: Math.floor(100000 + Math.random() * 900000).toString(),
         status: transactionStatus,
         items: cart,
+        cash_paid: cashPaid,
+        change: change,
+        points_earned: pointsToEarn,
+        debt_incurred: newDebt,
       };
 
       const newTransaction = await supabaseService.createTransaction(
@@ -148,7 +149,7 @@ export default function CartSidebar() {
       clearCart();
       setCustomer(null);
       setCashPaid(0);
-      setDisplayCashPaid(""); // Reset tampilan input juga
+      setDisplayCashPaid("");
       setIncludeDebt(false);
       router.push("/checkout");
     } catch (error) {
@@ -162,7 +163,6 @@ export default function CartSidebar() {
   return (
     <>
       <div className="flex w-96 flex-col border-l bg-background">
-        {/* Header dan Customer Section */}
         <div className="flex items-center justify-between border-b p-4">
           <h2 className="flex items-center text-lg font-semibold">
             <ShoppingCart className="mr-2 h-5 w-5" />
@@ -172,6 +172,7 @@ export default function CartSidebar() {
             {itemCount} item
           </span>
         </div>
+
         <div className="border-b p-4">
           <Button
             variant="outline"
@@ -189,7 +190,6 @@ export default function CartSidebar() {
           )}
         </div>
 
-        {/* Daftar Item Keranjang */}
         <div className="flex-1 overflow-auto p-4 space-y-4">
           {cart.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
@@ -255,7 +255,6 @@ export default function CartSidebar() {
           )}
         </div>
 
-        {/* Bagian Pembayaran Baru */}
         <div className="border-t p-4 space-y-3">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -296,7 +295,6 @@ export default function CartSidebar() {
 
           <div>
             <Label htmlFor="cash-paid">Input Uang</Label>
-            {/* PERBAIKAN: Input diubah untuk menggunakan state dan handler baru */}
             <Input
               id="cash-paid"
               type="text"

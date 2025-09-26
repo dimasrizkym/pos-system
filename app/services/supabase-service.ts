@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type { CartItem } from "../context/cart-context";
 
+// Definisi Interface yang konsisten
 export interface Category {
   id: string;
   name: string;
@@ -40,8 +41,18 @@ export interface Transaction {
   created_at: string;
   receiptNumber: string;
   status: "paid" | "unpaid";
+  // Kolom baru sesuai skrip SQL
+  cash_paid: number;
+  change: number;
+  points_earned: number;
+  debt_incurred: number;
   transaction_items: TransactionItem[];
-  customer?: { name: string; email: string };
+  customer?: {
+    name: string;
+    email: string;
+    loyalty_points: number;
+    outstanding_debt: number;
+  };
 }
 
 export interface TransactionItem {
@@ -55,197 +66,106 @@ export interface TransactionItem {
 class SupabaseService {
   private supabase = createClient();
 
-  // Categories
+  // ... (Fungsi Categories, Products, Customers tidak berubah) ...
   async getCategories(): Promise<Category[]> {
-    console.log("[v0] Fetching categories from Supabase...");
     const { data, error } = await this.supabase
       .from("categories")
       .select("*")
       .order("name");
-
-    if (error) {
-      console.error("[v0] Error fetching categories:", error);
-      throw error;
-    }
-
-    console.log("[v0] Successfully fetched categories:", data?.length || 0);
+    if (error) throw error;
     return data || [];
   }
-
   async createCategory(
     category: Omit<Category, "id" | "created_at">
   ): Promise<Category> {
-    console.log("[v0] Creating category:", category.name);
     const { data, error } = await this.supabase
       .from("categories")
       .insert([category])
       .select()
       .single();
-
-    if (error) {
-      console.error("[v0] Error creating category:", error);
-      throw error;
-    }
-
-    console.log("[v0] Successfully created category:", data.name);
+    if (error) throw error;
     return data;
   }
-
   async updateCategory(
     id: string,
     updates: Partial<Omit<Category, "id" | "created_at">>
   ): Promise<Category> {
-    console.log("[v0] Updating category:", id);
     const { data, error } = await this.supabase
       .from("categories")
       .update(updates)
       .eq("id", id)
       .select()
       .single();
-
-    if (error) {
-      console.error("[v0] Error updating category:", error);
-      throw error;
-    }
-
-    console.log("[v0] Successfully updated category:", data.name);
+    if (error) throw error;
     return data;
   }
-
   async deleteCategory(id: string): Promise<void> {
-    console.log("[v0] Deleting category:", id);
     const { error } = await this.supabase
       .from("categories")
       .delete()
       .eq("id", id);
-
-    if (error) {
-      console.error("[v0] Error deleting category:", error);
-      throw error;
-    }
-
-    console.log("[v0] Successfully deleted category");
+    if (error) throw error;
   }
-
-  // Products
   async getProducts(): Promise<Product[]> {
-    console.log("[v0] Fetching products from Supabase...");
     const { data, error } = await this.supabase
       .from("products")
       .select("*")
       .order("name");
-
-    if (error) {
-      console.error("[v0] Error fetching products:", error);
-      throw error;
-    }
-
-    console.log("[v0] Successfully fetched products:", data?.length || 0);
+    if (error) throw error;
     return data || [];
   }
-
   async getProductsWithCategories(): Promise<ProductWithCategory[]> {
-    console.log("[v0] Fetching products with categories from Supabase...");
     const { data, error } = await this.supabase
       .from("products")
-      .select(
-        `
-        *,
-        category:categories(*)
-      `
-      )
+      .select(`*, category:categories(*)`)
       .order("name");
-
-    if (error) {
-      console.error("[v0] Error fetching products with categories:", error);
-      throw error;
-    }
-
-    console.log(
-      "[v0] Successfully fetched products with categories:",
-      data?.length || 0
-    );
+    if (error) throw error;
     return data || [];
   }
-
   async createProduct(
     product: Omit<Product, "id" | "created_at">
   ): Promise<Product> {
-    console.log("[v0] Creating product:", product.name);
     const { data, error } = await this.supabase
       .from("products")
       .insert([product])
       .select()
       .single();
-
-    if (error) {
-      console.error("[v0] Error creating product:", error);
-      throw error;
-    }
-
-    console.log("[v0] Successfully created product:", data.name);
+    if (error) throw error;
     return data;
   }
-
   async updateProduct(
     id: string,
     updates: Partial<Omit<Product, "id" | "created_at">>
   ): Promise<Product> {
-    console.log("[v0] Updating product:", id);
     const { data, error } = await this.supabase
       .from("products")
       .update(updates)
       .eq("id", id)
       .select()
       .single();
-
-    if (error) {
-      console.error("[v0] Error updating product:", error);
-      throw error;
-    }
-
-    console.log("[v0] Successfully updated product:", data.name);
+    if (error) throw error;
     return data;
   }
-
   async deleteProduct(id: string): Promise<void> {
-    console.log("[v0] Deleting product:", id);
     const { error } = await this.supabase
       .from("products")
       .delete()
       .eq("id", id);
-
-    if (error) {
-      console.error("[v0] Error deleting product:", error);
-      throw error;
-    }
-
-    console.log("[v0] Successfully deleted product");
+    if (error) throw error;
   }
-
   async getProductCountByCategory(): Promise<Record<string, number>> {
-    console.log("[v0] Getting product count by category...");
     const { data, error } = await this.supabase
       .from("products")
       .select("category_id");
-
-    if (error) {
-      console.error("[v0] Error getting product count:", error);
-      return {};
-    }
-
+    if (error) return {};
     const counts: Record<string, number> = {};
     data?.forEach((product: { category_id?: string }) => {
       if (product.category_id) {
         counts[product.category_id] = (counts[product.category_id] || 0) + 1;
       }
     });
-
-    console.log("[v0] Product counts by category:", counts);
     return counts;
   }
-
-  // Customer Management
   async getCustomers(): Promise<Customer[]> {
     const { data, error } = await this.supabase
       .from("customers")
@@ -254,7 +174,6 @@ class SupabaseService {
     if (error) throw error;
     return data || [];
   }
-
   async createCustomer(
     customerData: Omit<
       Customer,
@@ -269,7 +188,6 @@ class SupabaseService {
     if (error) throw error;
     return data;
   }
-
   async updateCustomer(
     id: string,
     updates: Partial<Customer>
@@ -283,7 +201,6 @@ class SupabaseService {
     if (error) throw error;
     return data;
   }
-
   async deleteCustomer(id: string): Promise<void> {
     const { error } = await this.supabase
       .from("customers")
@@ -291,7 +208,6 @@ class SupabaseService {
       .eq("id", id);
     if (error) throw error;
   }
-
   async payOffDebt(
     customerId: string,
     amount: number,
@@ -310,6 +226,10 @@ class SupabaseService {
     receiptNumber: string;
     status: "paid" | "unpaid";
     items: CartItem[];
+    cash_paid: number;
+    change: number;
+    points_earned: number;
+    debt_incurred: number;
   }): Promise<Transaction> {
     const { data: newTransaction, error: transactionError } =
       await this.supabase
@@ -321,6 +241,10 @@ class SupabaseService {
           payment_method: transactionData.payment_method,
           receiptNumber: transactionData.receiptNumber,
           status: transactionData.status,
+          cash_paid: transactionData.cash_paid,
+          change: transactionData.change,
+          points_earned: transactionData.points_earned,
+          debt_incurred: transactionData.debt_incurred,
         })
         .select()
         .single();
@@ -352,7 +276,9 @@ class SupabaseService {
   async getTransactionsWithDetails(): Promise<Transaction[]> {
     const { data, error } = await this.supabase
       .from("transactions")
-      .select(`*, transaction_items(*), customer:customers(name, email)`)
+      .select(
+        `*, transaction_items(*), customer:customers(name, email, loyalty_points, outstanding_debt)`
+      )
       .order("created_at", { ascending: false });
 
     if (error) throw error;

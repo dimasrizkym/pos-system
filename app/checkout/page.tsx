@@ -8,7 +8,6 @@ import { Separator } from "@/components/ui/separator";
 import { formatRupiah } from "@/lib/currency";
 import type { CartItem } from "../context/cart-context";
 
-// Tipe data ini harus cocok dengan objek yang disimpan di sessionStorage dari CartSidebar
 interface ReceiptData {
   receiptNumber: string;
   created_at: string;
@@ -71,7 +70,7 @@ export default function CheckoutPage() {
       <div className="rounded-lg border p-6 print:border-none bg-white">
         <div className="mb-4 text-center">
           <Check className="h-12 w-12 text-green-500 mx-auto mb-2" />
-          <h1 className="text-2xl font-bold">Pembayaran Berhasil</h1>
+          <h1 className="text-2xl font-bold">Transaksi Berhasil</h1>
           <p className="text-muted-foreground">
             Terima kasih atas pembelian Anda!
           </p>

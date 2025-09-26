@@ -2,7 +2,14 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, Package, MoreHorizontal } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Package,
+  MoreHorizontal,
+  Search,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +18,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
@@ -44,8 +50,12 @@ interface CategoryWithCount extends Category {
 }
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<CategoryWithCount[]>([]);
+  const [allCategories, setAllCategories] = useState<CategoryWithCount[]>([]);
+  const [filteredCategories, setFilteredCategories] = useState<
+    CategoryWithCount[]
+  >([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [editingCategory, setEditingCategory] =
     useState<CategoryWithCount | null>(null);
@@ -55,6 +65,16 @@ export default function CategoriesPage() {
   useEffect(() => {
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    let results = allCategories;
+    if (searchQuery.trim()) {
+      results = allCategories.filter((category) =>
+        category.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    setFilteredCategories(results);
+  }, [searchQuery, allCategories]);
 
   const loadCategories = async () => {
     try {
@@ -69,7 +89,8 @@ export default function CategoriesPage() {
         productCount: productCounts[category.id] || 0,
       }));
 
-      setCategories(categoriesWithCount);
+      setAllCategories(categoriesWithCount);
+      setFilteredCategories(categoriesWithCount);
     } catch (error) {
       console.error("[v0] Error loading categories:", error);
     } finally {
@@ -151,20 +172,33 @@ export default function CategoriesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold">Categories</h1>
-          <p className="text-muted-foreground">
-            Organize your products into categories
-          </p>
+          <h1 className="text-2xl lg:text-3xl font-bold">Kategori</h1>
+          <p className="text-muted-foreground">Atur kategori produk Anda</p>
         </div>
         <Button onClick={() => handleOpenDialog()}>
           <Plus className="h-4 w-4 mr-2" />
-          Add Category
+          Tambah Kategori
         </Button>
       </div>
 
+      {/* Fitur Search Baru */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cari nama kategori..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Categories Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {categories.map((category) => (
+        {filteredCategories.map((category) => (
           <Card key={category.id} className="overflow-hidden">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
@@ -175,7 +209,7 @@ export default function CategoriesPage() {
                   <div>
                     <CardTitle className="text-lg">{category.name}</CardTitle>
                     <Badge variant="secondary" className="text-xs mt-1">
-                      {category.productCount} products
+                      {category.productCount} produk
                     </Badge>
                   </div>
                 </div>
@@ -199,24 +233,26 @@ export default function CategoriesPage() {
                           className="text-red-600"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
+                          Hapus
                         </DropdownMenuItem>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogTitle>
+                            Apakah Anda yakin?
+                          </AlertDialogTitle>
                           <AlertDialogDescription>
-                            This action cannot be undone. This will permanently
-                            delete the category.
+                            Tindakan ini tidak dapat dibatalkan. Ini akan
+                            menghapus kategori secara permanen.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleDelete(category.id)}
                             className="bg-red-600 hover:bg-red-700"
                           >
-                            Delete
+                            Hapus
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -229,18 +265,22 @@ export default function CategoriesPage() {
         ))}
       </div>
 
-      {categories.length === 0 && !loading && (
+      {filteredCategories.length === 0 && !loading && (
         <Card>
           <CardContent className="p-12 text-center">
             <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="font-medium mb-2">No categories found</h3>
+            <h3 className="font-medium mb-2">Tidak ada kategori ditemukan</h3>
             <p className="text-muted-foreground mb-4">
-              Get started by adding your first category
+              {searchQuery
+                ? "Coba kata kunci lain."
+                : "Mulai dengan menambahkan kategori pertama Anda."}
             </p>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Category
-            </Button>
+            {!searchQuery && (
+              <Button onClick={() => handleOpenDialog()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Tambah Kategori
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
@@ -250,12 +290,12 @@ export default function CategoriesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingCategory ? "Edit Category" : "Add New Category"}
+              {editingCategory ? "Edit Kategori" : "Tambah Kategori Baru"}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 pt-4">
             <div>
-              <Label htmlFor="name">Category Name *</Label>
+              <Label htmlFor="name">Nama Kategori *</Label>
               <Input
                 id="name"
                 value={formData.name}
@@ -266,7 +306,7 @@ export default function CategoriesPage() {
               />
             </div>
             <div>
-              <Label htmlFor="icon">Icon (Emoji)</Label>
+              <Label htmlFor="icon">Ikon (Emoji)</Label>
               <Input
                 id="icon"
                 value={formData.icon}
@@ -279,11 +319,11 @@ export default function CategoriesPage() {
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline">
-                  Cancel
+                  Batal
                 </Button>
               </DialogClose>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save"}
+                {isSubmitting ? "Menyimpan..." : "Simpan"}
               </Button>
             </DialogFooter>
           </form>
