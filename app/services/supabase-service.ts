@@ -27,6 +27,8 @@ export interface Customer {
   email: string;
   phone: string | null;
   created_at: string;
+  loyalty_points: number;
+  outstanding_debt: number;
 }
 
 export interface Transaction {
@@ -37,6 +39,7 @@ export interface Transaction {
   payment_method: string;
   created_at: string;
   receiptNumber: string;
+  status: "paid" | "unpaid";
   transaction_items: TransactionItem[];
   customer?: { name: string; email: string };
 }
@@ -241,6 +244,7 @@ class SupabaseService {
     console.log("[v0] Product counts by category:", counts);
     return counts;
   }
+
   // Customer Management
   async getCustomers(): Promise<Customer[]> {
     const { data, error } = await this.supabase
@@ -252,7 +256,10 @@ class SupabaseService {
   }
 
   async createCustomer(
-    customerData: Omit<Customer, "id" | "created_at">
+    customerData: Omit<
+      Customer,
+      "id" | "created_at" | "loyalty_points" | "outstanding_debt"
+    >
   ): Promise<Customer> {
     const { data, error } = await this.supabase
       .from("customers")
@@ -285,16 +292,25 @@ class SupabaseService {
     if (error) throw error;
   }
 
-  // Transaction Management
+  async payOffDebt(
+    customerId: string,
+    amount: number,
+    currentDebt: number
+  ): Promise<Customer> {
+    const newDebt = Math.max(0, currentDebt - amount);
+    return this.updateCustomer(customerId, { outstanding_debt: newDebt });
+  }
+
+  // --- Transaction Management ---
   async createTransaction(transactionData: {
     user_id: string | null;
     customer_id: string | null;
     total: number;
     payment_method: string;
     receiptNumber: string;
+    status: "paid" | "unpaid";
     items: CartItem[];
   }): Promise<Transaction> {
-    // 1. Buat record transaksi utama
     const { data: newTransaction, error: transactionError } =
       await this.supabase
         .from("transactions")
@@ -304,16 +320,13 @@ class SupabaseService {
           total: transactionData.total,
           payment_method: transactionData.payment_method,
           receiptNumber: transactionData.receiptNumber,
+          status: transactionData.status,
         })
         .select()
         .single();
 
-    if (transactionError) {
-      console.error("Error creating transaction:", transactionError);
-      throw transactionError;
-    }
+    if (transactionError) throw transactionError;
 
-    // 2. Siapkan item-item transaksi
     const transactionItems = transactionData.items.map((item) => ({
       transaction_id: newTransaction.id,
       product_id: item.id,
@@ -321,14 +334,11 @@ class SupabaseService {
       price: item.price,
     }));
 
-    // 3. Masukkan semua item ke tabel transaction_items
     const { error: itemsError } = await this.supabase
       .from("transaction_items")
       .insert(transactionItems);
 
     if (itemsError) {
-      console.error("Error creating transaction items:", itemsError);
-      // Optional: Hapus transaksi utama jika item gagal dibuat
       await this.supabase
         .from("transactions")
         .delete()
@@ -342,19 +352,10 @@ class SupabaseService {
   async getTransactionsWithDetails(): Promise<Transaction[]> {
     const { data, error } = await this.supabase
       .from("transactions")
-      .select(
-        `
-            *,
-            transaction_items(*),
-            customer:customers(name, email)
-        `
-      )
+      .select(`*, transaction_items(*), customer:customers(name, email)`)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching transactions:", error);
-      throw error;
-    }
+    if (error) throw error;
     return data || [];
   }
 }

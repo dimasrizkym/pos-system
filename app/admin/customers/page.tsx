@@ -9,12 +9,14 @@ import {
   User,
   Phone,
   Mail,
+  Award,
   Search,
   MoreHorizontal,
+  DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -52,6 +55,7 @@ import {
   supabaseService,
   type Customer,
 } from "../../services/supabase-service";
+import { formatRupiah } from "@/lib/currency";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -61,6 +65,8 @@ export default function CustomersPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState({ name: "", email: "", phone: "" });
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [payingCustomer, setPayingCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
     loadCustomers();
@@ -108,7 +114,7 @@ export default function CustomersPage() {
         await supabaseService.createCustomer(customerData as any);
       }
       resetForm();
-      loadCustomers();
+      await loadCustomers();
     } catch (error) {
       console.error("Failed to save customer:", error);
     }
@@ -127,7 +133,7 @@ export default function CustomersPage() {
   const handleDelete = async (customerId: string) => {
     try {
       await supabaseService.deleteCustomer(customerId);
-      loadCustomers();
+      await loadCustomers();
     } catch (error) {
       console.error("Failed to delete customer:", error);
     }
@@ -139,7 +145,24 @@ export default function CustomersPage() {
     setShowAddDialog(false);
   };
 
-  if (loading) return <div>Loading customers...</div>;
+  const handlePayDebt = async () => {
+    if (!payingCustomer || paymentAmount <= 0) return;
+    try {
+      await supabaseService.payOffDebt(
+        payingCustomer.id,
+        paymentAmount,
+        payingCustomer.outstanding_debt
+      );
+      setPayingCustomer(null);
+      setPaymentAmount(0);
+      await loadCustomers();
+    } catch (error) {
+      console.error("Failed to pay debt:", error);
+      alert("Gagal memproses pembayaran hutang.");
+    }
+  };
+
+  if (loading) return <div className="p-6">Memuat data pelanggan...</div>;
 
   return (
     <div className="space-y-6">
@@ -148,11 +171,14 @@ export default function CustomersPage() {
           <h1 className="text-2xl lg:text-3xl font-bold">
             Manajemen Pelanggan
           </h1>
-          <p className="text-muted-foreground">Kelola informasi pelanggan</p>
+          <p className="text-muted-foreground">
+            Kelola informasi, poin, dan hutang pelanggan
+          </p>
         </div>
         <Button
           onClick={() => {
             setEditingCustomer(null);
+            setFormData({ name: "", email: "", phone: "" });
             setShowAddDialog(true);
           }}
         >
@@ -163,26 +189,12 @@ export default function CustomersPage() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cari pelanggan..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nama</TableHead>
-                <TableHead>Kontak</TableHead>
-                <TableHead>Tanggal Bergabung</TableHead>
+                <TableHead>Pelanggan</TableHead>
+                <TableHead>Poin Loyalitas</TableHead>
+                <TableHead>Total Hutang</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -190,29 +202,25 @@ export default function CustomersPage() {
               {filteredCustomers.map((customer) => (
                 <TableRow key={customer.id}>
                   <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                        <User className="h-4 w-4" />
-                      </div>
-                      <p className="font-medium">{customer.name}</p>
-                    </div>
+                    <p className="font-medium">{customer.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {customer.email}
+                    </p>
                   </TableCell>
                   <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Mail className="h-3 w-3" />
-                        {customer.email}
-                      </div>
-                      {customer.phone && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Phone className="h-3 w-3" />
-                          {customer.phone}
-                        </div>
-                      )}
-                    </div>
+                    <Badge variant="secondary">
+                      <Award className="h-3 w-3 mr-1" />
+                      {customer.loyalty_points} poin
+                    </Badge>
                   </TableCell>
                   <TableCell>
-                    {new Date(customer.created_at).toLocaleDateString("id-ID")}
+                    {customer.outstanding_debt > 0 ? (
+                      <span className="text-red-600 font-medium">
+                        {formatRupiah(customer.outstanding_debt)}
+                      </span>
+                    ) : (
+                      <span>-</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -222,6 +230,16 @@ export default function CustomersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setPayingCustomer(customer);
+                            setPaymentAmount(customer.outstanding_debt);
+                          }}
+                          disabled={customer.outstanding_debt <= 0}
+                        >
+                          <DollarSign className="h-4 w-4 mr-2" />
+                          Bayar Hutang
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleEdit(customer)}>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
@@ -315,6 +333,40 @@ export default function CustomersPage() {
               <Button type="submit">Simpan</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!payingCustomer}
+        onOpenChange={() => setPayingCustomer(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bayar Hutang untuk {payingCustomer?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="pt-4 space-y-4">
+            <p>
+              Total hutang saat ini:{" "}
+              <span className="font-bold">
+                {formatRupiah(payingCustomer?.outstanding_debt || 0)}
+              </span>
+            </p>
+            <div>
+              <Label htmlFor="payment">Jumlah Pembayaran</Label>
+              <Input
+                id="payment"
+                type="number"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(Number(e.target.value))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayingCustomer(null)}>
+              Batal
+            </Button>
+            <Button onClick={handlePayDebt}>Konfirmasi Pembayaran</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
