@@ -13,6 +13,7 @@ import {
   Search,
   MoreHorizontal,
   DollarSign,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,8 +66,16 @@ export default function CustomersPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState({ name: "", email: "", phone: "" });
+
+  // State untuk hutang
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [payingCustomer, setPayingCustomer] = useState<Customer | null>(null);
+
+  // State baru untuk poin
+  const [redeemAmount, setRedeemAmount] = useState<number>(0);
+  const [redeemingCustomer, setRedeemingCustomer] = useState<Customer | null>(
+    null
+  );
 
   useEffect(() => {
     loadCustomers();
@@ -163,6 +172,28 @@ export default function CustomersPage() {
     }
   };
 
+  // Fungsi baru untuk menukar poin
+  const handleRedeemPoints = async () => {
+    if (!redeemingCustomer || redeemAmount <= 0) return;
+    if (redeemAmount > redeemingCustomer.loyalty_points) {
+      alert("Poin yang ditukar melebihi poin yang dimiliki.");
+      return;
+    }
+    try {
+      await supabaseService.redeemPoints(
+        redeemingCustomer.id,
+        redeemAmount,
+        redeemingCustomer.loyalty_points
+      );
+      setRedeemingCustomer(null);
+      setRedeemAmount(0);
+      await loadCustomers();
+    } catch (error) {
+      console.error("Failed to redeem points:", error);
+      alert("Gagal menukar poin.");
+    }
+  };
+
   if (loading) return <div className="p-6">Memuat data pelanggan...</div>;
 
   return (
@@ -240,6 +271,16 @@ export default function CustomersPage() {
                         >
                           <DollarSign className="h-4 w-4 mr-2" />
                           Bayar Hutang
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setRedeemingCustomer(customer);
+                            setRedeemAmount(0);
+                          }}
+                          disabled={customer.loyalty_points <= 0}
+                        >
+                          <Gift className="h-4 w-4 mr-2" />
+                          Tukar Poin
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleEdit(customer)}>
                           <Edit className="h-4 w-4 mr-2" />
@@ -367,6 +408,45 @@ export default function CustomersPage() {
               Batal
             </Button>
             <Button onClick={handlePayDebt}>Konfirmasi Pembayaran</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!redeemingCustomer}
+        onOpenChange={() => setRedeemingCustomer(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Tukar Poin untuk {redeemingCustomer?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="pt-4 space-y-4">
+            <p>
+              Total poin saat ini:{" "}
+              <span className="font-bold">
+                {redeemingCustomer?.loyalty_points || 0} Poin
+              </span>
+            </p>
+            <div>
+              <Label htmlFor="redeem">Jumlah Poin untuk Ditukar</Label>
+              <Input
+                id="redeem"
+                type="number"
+                value={redeemAmount}
+                onChange={(e) => setRedeemAmount(Number(e.target.value))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRedeemingCustomer(null)}
+            >
+              Batal
+            </Button>
+            <Button onClick={handleRedeemPoints}>Konfirmasi Penukaran</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

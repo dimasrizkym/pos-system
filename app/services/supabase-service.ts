@@ -1,14 +1,12 @@
 import { createClient } from "@/lib/supabase/client";
 import type { CartItem } from "../context/cart-context";
 
-// Definisi Interface yang konsisten
 export interface Category {
   id: string;
   name: string;
   icon: string;
   created_at: string;
 }
-
 export interface Product {
   id: string;
   name: string;
@@ -17,11 +15,9 @@ export interface Product {
   category_id: string;
   created_at: string;
 }
-
 export interface ProductWithCategory extends Product {
   category: Category;
 }
-
 export interface Customer {
   id: string;
   name: string;
@@ -30,6 +26,15 @@ export interface Customer {
   created_at: string;
   loyalty_points: number;
   outstanding_debt: number;
+}
+
+export interface TransactionItem {
+  id: string;
+  transaction_id: string;
+  product_id: string;
+  quantity: number;
+  price: number;
+  products: { name: string };
 }
 
 export interface Transaction {
@@ -41,7 +46,6 @@ export interface Transaction {
   created_at: string;
   receiptNumber: string;
   status: "paid" | "unpaid";
-  // Kolom baru sesuai skrip SQL
   cash_paid: number;
   change: number;
   points_earned: number;
@@ -55,18 +59,10 @@ export interface Transaction {
   };
 }
 
-export interface TransactionItem {
-  id: string;
-  transaction_id: string;
-  product_id: string;
-  quantity: number;
-  price: number;
-}
-
 class SupabaseService {
   private supabase = createClient();
 
-  // ... (Fungsi Categories, Products, Customers tidak berubah) ...
+  // ... (Fungsi Categories, Products tidak berubah) ...
   async getCategories(): Promise<Category[]> {
     const { data, error } = await this.supabase
       .from("categories")
@@ -217,6 +213,15 @@ class SupabaseService {
     return this.updateCustomer(customerId, { outstanding_debt: newDebt });
   }
 
+  async redeemPoints(
+    customerId: string,
+    pointsToRedeem: number,
+    currentPoints: number
+  ): Promise<Customer> {
+    const newPoints = Math.max(0, currentPoints - pointsToRedeem);
+    return this.updateCustomer(customerId, { loyalty_points: newPoints });
+  }
+
   // --- Transaction Management ---
   async createTransaction(transactionData: {
     user_id: string | null;
@@ -277,7 +282,7 @@ class SupabaseService {
     const { data, error } = await this.supabase
       .from("transactions")
       .select(
-        `*, transaction_items(*), customer:customers(name, email, loyalty_points, outstanding_debt)`
+        `*, transaction_items(*, products(name)), customer:customers(name, email, loyalty_points, outstanding_debt)`
       )
       .order("created_at", { ascending: false });
 
