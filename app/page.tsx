@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Settings, LogOut, History, ChevronRight } from "lucide-react";
+import {
+  Search,
+  Settings,
+  LogOut,
+  History,
+  ChevronRight,
+  Plus,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import ProductGrid from "./components/product-grid";
 import CartSidebar from "./components/cart-sidebar";
@@ -11,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import ProtectedRoute from "./components/protected-route";
 import { useAuth } from "./context/auth-context";
 import { cn } from "@/lib/utils";
+import ProductFormModal from "./components/product-form-modal";
+import { Product } from "./services/supabase-service";
 
 export default function POSPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -19,9 +28,27 @@ export default function POSPage() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [refreshProductGrid, setRefreshProductGrid] = useState(0);
+
   const handleLogout = () => {
     logout();
     router.push("/auth/login");
+  };
+
+  const openAddProductModal = () => {
+    setProductToEdit(null);
+    setShowProductModal(true);
+  };
+
+  const openEditProductModal = (product: Product) => {
+    setProductToEdit(product);
+    setShowProductModal(true);
+  };
+
+  const onFormSuccess = () => {
+    setRefreshProductGrid(Math.random());
   };
 
   return (
@@ -53,7 +80,7 @@ export default function POSPage() {
                   variant="outline"
                   onClick={() => setIsCategoryOpen(!isCategoryOpen)}
                 >
-                  Kategori
+                  Kategori{" "}
                   <ChevronRight
                     className={cn(
                       "h-4 w-4 ml-2 transition-transform duration-200",
@@ -61,6 +88,12 @@ export default function POSPage() {
                     )}
                   />
                 </Button>
+                {user?.role === "owner" && (
+                  <Button variant="outline" onClick={openAddProductModal}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah Produk
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   onClick={() => router.push("/transactions")}
@@ -92,11 +125,12 @@ export default function POSPage() {
               selectedCategory={selectedCategory}
               onSelectCategory={setSelectedCategory}
             />
-
             <div className="p-4">
               <ProductGrid
+                key={refreshProductGrid}
                 category={selectedCategory}
                 searchQuery={searchQuery}
+                onEditProduct={openEditProductModal}
               />
             </div>
           </div>
@@ -104,6 +138,13 @@ export default function POSPage() {
 
         <CartSidebar />
       </div>
+
+      <ProductFormModal
+        isOpen={showProductModal}
+        onClose={() => setShowProductModal(false)}
+        onSuccess={onFormSuccess}
+        productToEdit={productToEdit}
+      />
     </ProtectedRoute>
   );
 }
