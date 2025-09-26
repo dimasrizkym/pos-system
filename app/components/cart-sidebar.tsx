@@ -117,6 +117,7 @@ export default function CartSidebar() {
       );
 
       clearCart();
+      setCustomer(null);
       setCashPaid(0);
       setIncludeDebt(false);
       router.push("/checkout");
