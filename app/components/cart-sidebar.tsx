@@ -13,6 +13,17 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "../context/auth-context";
 import { supabaseService } from "../services/supabase-service";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function CartSidebar() {
   const router = useRouter();
@@ -29,10 +40,12 @@ export default function CartSidebar() {
   } = useCart();
 
   const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [cashPaid, setCashPaid] = useState(0);
+  const [cashPaid, setCashPaid] = useState(0); // State untuk nilai angka
+  const [displayCashPaid, setDisplayCashPaid] = useState(""); // State untuk nilai tampilan
   const [includeDebt, setIncludeDebt] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // --- Kalkulasi Real-time ---
   const totalToPay = useMemo(() => {
     if (customer && includeDebt) {
       return cartTotal + customer.outstanding_debt;
@@ -52,6 +65,22 @@ export default function CartSidebar() {
     () => (cartTotal > 0 ? Math.floor(cartTotal / 20000) : 0),
     [cartTotal]
   );
+
+  // Fungsi untuk menangani input uang tunai
+  const handleCashPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    // Hapus semua karakter non-digit
+    const numericValue = parseInt(rawValue.replace(/[^0-9]/g, ""), 10);
+
+    if (isNaN(numericValue)) {
+      setCashPaid(0);
+      setDisplayCashPaid("");
+    } else {
+      setCashPaid(numericValue);
+      // Format dengan titik sebagai pemisah ribuan
+      setDisplayCashPaid(new Intl.NumberFormat("id-ID").format(numericValue));
+    }
+  };
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
@@ -119,6 +148,7 @@ export default function CartSidebar() {
       clearCart();
       setCustomer(null);
       setCashPaid(0);
+      setDisplayCashPaid(""); // Reset tampilan input juga
       setIncludeDebt(false);
       router.push("/checkout");
     } catch (error) {
@@ -132,6 +162,7 @@ export default function CartSidebar() {
   return (
     <>
       <div className="flex w-96 flex-col border-l bg-background">
+        {/* Header dan Customer Section */}
         <div className="flex items-center justify-between border-b p-4">
           <h2 className="flex items-center text-lg font-semibold">
             <ShoppingCart className="mr-2 h-5 w-5" />
@@ -141,7 +172,6 @@ export default function CartSidebar() {
             {itemCount} item
           </span>
         </div>
-
         <div className="border-b p-4">
           <Button
             variant="outline"
@@ -159,6 +189,7 @@ export default function CartSidebar() {
           )}
         </div>
 
+        {/* Daftar Item Keranjang */}
         <div className="flex-1 overflow-auto p-4 space-y-4">
           {cart.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
@@ -224,24 +255,32 @@ export default function CartSidebar() {
           )}
         </div>
 
-        <div className="border-t p-4 space-y-4">
-          <div className="space-y-2">
+        {/* Bagian Pembayaran Baru */}
+        <div className="border-t p-4 space-y-3">
+          <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <p>Subtotal</p>
+              <p>Total Belanja SKG</p>
               <p>{formatRupiah(cartTotal)}</p>
             </div>
+            <div className="flex justify-between text-red-600">
+              <p>Hutang Baru</p>
+              <p>{formatRupiah(newDebt)}</p>
+            </div>
             {customer && customer.outstanding_debt > 0 && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="include-debt"
-                  checked={includeDebt}
-                  onCheckedChange={(checked) =>
-                    setIncludeDebt(Boolean(checked))
-                  }
-                />
-                <Label htmlFor="include-debt" className="text-sm">
-                  Sertakan pembayaran hutang
-                </Label>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="include-debt"
+                    checked={includeDebt}
+                    onCheckedChange={(checked) =>
+                      setIncludeDebt(Boolean(checked))
+                    }
+                  />
+                  <Label htmlFor="include-debt" className="text-sm">
+                    Sertakan Pembayaran Hutang
+                  </Label>
+                </div>
+                <p>{formatRupiah(customer.outstanding_debt)}</p>
               </div>
             )}
             <Separator />
@@ -249,28 +288,22 @@ export default function CartSidebar() {
               <p>Total Bayar</p>
               <p>{formatRupiah(totalToPay)}</p>
             </div>
-          </div>
-
-          <div>
-            <Label htmlFor="cash-paid">Uang Tunai Diterima</Label>
-            <Input
-              id="cash-paid"
-              type="number"
-              placeholder="Masukkan jumlah uang"
-              value={cashPaid || ""}
-              onChange={(e) => setCashPaid(Number(e.target.value))}
-            />
-          </div>
-
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between text-red-600">
-              <p>Hutang Baru</p>
-              <p>{formatRupiah(newDebt)}</p>
-            </div>
             <div className="flex justify-between text-green-600">
               <p>Kembalian</p>
               <p>{formatRupiah(change)}</p>
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="cash-paid">Input Uang</Label>
+            {/* PERBAIKAN: Input diubah untuk menggunakan state dan handler baru */}
+            <Input
+              id="cash-paid"
+              type="text"
+              placeholder="Rp 0"
+              value={displayCashPaid}
+              onChange={handleCashPaidChange}
+            />
           </div>
 
           {customer && (
@@ -280,14 +313,81 @@ export default function CartSidebar() {
             </div>
           )}
 
-          <Button
-            className="w-full"
-            size="lg"
-            disabled={cart.length === 0 || isLoading}
-            onClick={handleCheckout}
-          >
-            {isLoading ? "Memproses..." : "Selesaikan Pembayaran"}
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                className="w-full"
+                size="lg"
+                disabled={cart.length === 0 || isLoading}
+              >
+                Selesaikan Pembayaran
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Konfirmasi Pembayaran</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Pastikan semua detail transaksi sudah benar sebelum
+                  melanjutkan.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="text-sm space-y-2">
+                <div className="flex justify-between">
+                  <span>Total Belanja</span>
+                  <span>{formatRupiah(cartTotal)}</span>
+                </div>
+
+                <div className="border-t border-b py-2 my-2">
+                  <div className="font-medium mb-1">Detail Item:</div>
+                  <div className="max-h-24 overflow-y-auto space-y-1 pr-2">
+                    {cart.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex justify-between text-muted-foreground"
+                      >
+                        <span>
+                          {item.name} x{item.quantity}
+                        </span>
+                        <span>{formatRupiah(item.price * item.quantity)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {includeDebt && (
+                  <div className="flex justify-between">
+                    <span>Bayar Hutang</span>
+                    <span>{formatRupiah(customer?.outstanding_debt || 0)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold">
+                  <span>Total Tagihan</span>
+                  <span>{formatRupiah(totalToPay)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tunai Diberikan</span>
+                  <span>{formatRupiah(cashPaid)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-green-600">
+                  <span>Kembalian</span>
+                  <span>{formatRupiah(change)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-red-600">
+                  <span>Hutang Baru</span>
+                  <span>{formatRupiah(newDebt)}</span>
+                </div>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Kembali</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleCheckout}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Memproses..." : "Konfirmasi & Cetak Struk"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
       <CustomerModal
