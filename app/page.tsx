@@ -57,14 +57,14 @@ export default function POSPage() {
         <main className="flex-1 flex flex-col h-screen overflow-hidden">
           <div className="sticky top-0 z-10 bg-background p-4 border-b">
             <div className="flex items-center justify-between gap-4">
-              <div>
+              {/* <div>
                 <h1 className="text-2xl font-bold">Point of Sale</h1>
                 <p className="text-sm text-muted-foreground">
                   Selamat datang, {user?.name} (
                   {user?.role === "owner" ? "Owner" : "Kasir"})
                 </p>
-              </div>
-              <div className="flex-1 max-w-sm">
+              </div> */}
+              <div className="flex-1 w-full">
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -94,13 +94,13 @@ export default function POSPage() {
                     Tambah Produk
                   </Button>
                 )}
-                <Button
+                {/* <Button
                   variant="outline"
                   onClick={() => router.push("/transactions")}
                 >
                   <History className="h-4 w-4 mr-2" />
                   Riwayat
-                </Button>
+                </Button> */}
                 {user?.role === "owner" && (
                   <Button
                     variant="outline"
