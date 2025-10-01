@@ -90,7 +90,6 @@ export default function CartSidebar() {
       const transactionStatus: "unpaid" | "paid" =
         newDebt > 0 ? "unpaid" : "paid";
 
-      // PERBAIKAN: Tambahkan properti yang hilang di sini
       const transactionData = {
         user_id: user?.id || null,
         customer_id: customer?.id || null,
@@ -134,6 +133,7 @@ export default function CartSidebar() {
           totalToPay: totalToPay,
           amountPaid: cashPaid,
           change: change,
+          previousDebt: customer?.outstanding_debt || 0, // Tambahkan ini
           newDebtThisTransaction: newDebt,
           totalOutstandingDebt: customer
             ? (includeDebt ? 0 : customer.outstanding_debt) + newDebt
@@ -163,6 +163,7 @@ export default function CartSidebar() {
   return (
     <>
       <div className="flex w-96 flex-col border-l bg-background">
+        {/* Header dan Customer Section */}
         <div className="flex items-center justify-between border-b p-4">
           <h2 className="flex items-center text-lg font-semibold">
             <ShoppingCart className="mr-2 h-5 w-5" />
@@ -172,7 +173,6 @@ export default function CartSidebar() {
             {itemCount} item
           </span>
         </div>
-
         <div className="border-b p-4">
           <Button
             variant="outline"
@@ -190,6 +190,7 @@ export default function CartSidebar() {
           )}
         </div>
 
+        {/* Daftar Item Keranjang */}
         <div className="flex-1 overflow-auto p-4 space-y-4">
           {cart.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
@@ -199,13 +200,13 @@ export default function CartSidebar() {
           ) : (
             cart.map((item) => (
               <div key={item.id} className="flex gap-3">
-                <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border">
+                {/* <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border">
                   <img
                     src={item.image || "/placeholder.svg"}
                     alt={item.name}
                     className="h-full w-full object-cover"
                   />
-                </div>
+                </div> */}
                 <div className="flex flex-1 flex-col">
                   <div className="flex justify-between">
                     <h3 className="font-medium line-clamp-1">{item.name}</h3>
@@ -261,10 +262,6 @@ export default function CartSidebar() {
               <p>Total Belanja SKG</p>
               <p>{formatRupiah(cartTotal)}</p>
             </div>
-            <div className="flex justify-between text-red-600">
-              <p>Hutang Baru</p>
-              <p>{formatRupiah(newDebt)}</p>
-            </div>
             {customer && customer.outstanding_debt > 0 && (
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
@@ -287,10 +284,6 @@ export default function CartSidebar() {
               <p>Total Bayar</p>
               <p>{formatRupiah(totalToPay)}</p>
             </div>
-            <div className="flex justify-between text-green-600">
-              <p>Kembalian</p>
-              <p>{formatRupiah(change)}</p>
-            </div>
           </div>
 
           <div>
@@ -302,6 +295,17 @@ export default function CartSidebar() {
               value={displayCashPaid}
               onChange={handleCashPaidChange}
             />
+          </div>
+
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between text-green-600">
+              <p>Kembalian</p>
+              <p>{formatRupiah(change)}</p>
+            </div>
+            <div className="flex justify-between text-red-600">
+              <p>Hutang Baru</p>
+              <p>{formatRupiah(newDebt)}</p>
+            </div>
           </div>
 
           {customer && (
@@ -325,16 +329,10 @@ export default function CartSidebar() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Konfirmasi Pembayaran</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Pastikan semua detail transaksi sudah benar sebelum
-                  melanjutkan.
+                  Pastikan semua detail transaksi sudah benar.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <div className="text-sm space-y-2">
-                <div className="flex justify-between">
-                  <span>Total Belanja</span>
-                  <span>{formatRupiah(cartTotal)}</span>
-                </div>
-
                 <div className="border-t border-b py-2 my-2">
                   <div className="font-medium mb-1">Detail Item:</div>
                   <div className="max-h-24 overflow-y-auto space-y-1 pr-2">
@@ -352,12 +350,6 @@ export default function CartSidebar() {
                   </div>
                 </div>
 
-                {includeDebt && (
-                  <div className="flex justify-between">
-                    <span>Bayar Hutang</span>
-                    <span>{formatRupiah(customer?.outstanding_debt || 0)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between font-bold">
                   <span>Total Tagihan</span>
                   <span>{formatRupiah(totalToPay)}</span>
@@ -370,10 +362,44 @@ export default function CartSidebar() {
                   <span>Kembalian</span>
                   <span>{formatRupiah(change)}</span>
                 </div>
-                <div className="flex justify-between font-bold text-red-600">
-                  <span>Hutang Baru</span>
-                  <span>{formatRupiah(newDebt)}</span>
-                </div>
+
+                {customer && (
+                  <>
+                    <Separator className="my-1" />
+                    <div className="flex justify-between">
+                      <span>Hutang Sebelumnya</span>
+                      <span>{formatRupiah(customer.outstanding_debt)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Hutang Baru</span>
+                      <span className="text-red-600">
+                        {formatRupiah(newDebt)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-bold">
+                      <span>Total Hutang Setelah Transaksi</span>
+                      <span className="text-red-600">
+                        {formatRupiah(
+                          (includeDebt ? 0 : customer.outstanding_debt) +
+                            newDebt
+                        )}
+                      </span>
+                    </div>
+                    <Separator className="my-1" />
+                    <div className="flex justify-between">
+                      <span>Poin Saat Ini</span>
+                      <span>{customer.loyalty_points} Poin</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Poin Akan Didapat</span>
+                      <span>+{pointsToEarn} Poin</span>
+                    </div>
+                    <div className="flex justify-between font-bold">
+                      <span>Total Poin Setelah Transaksi</span>
+                      <span>{customer.loyalty_points + pointsToEarn} Poin</span>
+                    </div>
+                  </>
+                )}
               </div>
               <AlertDialogFooter>
                 <AlertDialogCancel>Kembali</AlertDialogCancel>

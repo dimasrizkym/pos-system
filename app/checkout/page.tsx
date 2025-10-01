@@ -16,6 +16,7 @@ interface ReceiptData {
   totalToPay: number;
   amountPaid: number;
   change: number;
+  previousDebt: number;
   newDebtThisTransaction: number;
   totalOutstandingDebt: number;
   previousPoints: number;
@@ -28,18 +29,13 @@ export default function CheckoutPage() {
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
 
   useEffect(() => {
-    // Baca data struk dari sessionStorage
     const lastReceiptJSON = sessionStorage.getItem("lastReceiptData");
     if (lastReceiptJSON) {
       try {
         setReceipt(JSON.parse(lastReceiptJSON));
-        // Hapus data setelah dibaca untuk mencegah tampilan ulang
         sessionStorage.removeItem("lastReceiptData");
       } catch (error) {
-        console.error(
-          "Gagal mem-parsing data struk dari session storage",
-          error
-        );
+        console.error("Gagal mem-parsing data struk", error);
       }
     }
   }, []);
@@ -57,7 +53,7 @@ export default function CheckoutPage() {
           <p className="text-muted-foreground mb-4">
             Selesaikan transaksi untuk melihat struk.
           </p>
-          <Button onClick={handleBackToPOS}>
+          <Button className="mt-4" onClick={handleBackToPOS}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke POS
           </Button>
         </div>
@@ -97,17 +93,27 @@ export default function CheckoutPage() {
             <span>Subtotal Belanja</span>
             <span>{formatRupiah(receipt.subtotal)}</span>
           </div>
+          {receipt.previousDebt > 0 && (
+            <div className="flex justify-between">
+              <span>Hutang Sebelumnya</span>
+              <span>{formatRupiah(receipt.previousDebt)}</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold">
             <span>Total Tagihan</span>
-            <span>{formatRupiah(receipt.totalToPay)}</span>
+            <span className="font-bold">
+              {formatRupiah(receipt.totalToPay)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>Tunai</span>
             <span>{formatRupiah(receipt.amountPaid)}</span>
           </div>
-          <div className="flex justify-between text-green-600">
+          <div className="flex justify-between">
             <span>Kembalian</span>
-            <span>{formatRupiah(receipt.change)}</span>
+            <span className="text-green-600 font-bold">
+              {formatRupiah(receipt.change)}
+            </span>
           </div>
           {receipt.newDebtThisTransaction > 0 && (
             <div className="flex justify-between text-red-600">
