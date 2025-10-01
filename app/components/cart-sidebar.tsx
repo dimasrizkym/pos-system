@@ -45,26 +45,21 @@ export default function CartSidebar() {
   const [includeDebt, setIncludeDebt] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Kalkulasi baru yang lebih akurat
   const totalToPay = useMemo(() => {
     return cartTotal + (includeDebt ? customer?.outstanding_debt || 0 : 0);
   }, [cartTotal, customer, includeDebt]);
 
   const debtPaidThisTransaction = useMemo(() => {
     if (!includeDebt || !customer || cashPaid <= cartTotal) return 0;
-    // Uang yang dipakai untuk bayar hutang adalah sisa cash setelah bayar belanjaan
     const cashAfterCart = cashPaid - cartTotal;
-    // Pembayaran utang tidak bisa melebihi utang yang ada
     return Math.min(customer.outstanding_debt, cashAfterCart);
   }, [cashPaid, cartTotal, customer, includeDebt]);
 
   const newDebtThisTransaction = useMemo(() => {
-    // Utang baru hanya ada jika uang tunai tidak cukup untuk belanjaan saat ini
     return Math.max(0, cartTotal - cashPaid);
   }, [cashPaid, cartTotal]);
 
   const change = useMemo(() => {
-    // Kembalian hanya ada jika uang tunai melebihi total tagihan
     return Math.max(0, cashPaid - totalToPay);
   }, [cashPaid, totalToPay]);
 
@@ -118,10 +113,10 @@ export default function CartSidebar() {
         cash_paid: cashPaid,
         change: change,
         points_earned: pointsToEarn,
-        debt_incurred: newDebtThisTransaction, // Menggunakan kalkulasi yang baru
+        debt_incurred: newDebtThisTransaction,
         debt_snapshot: customer?.outstanding_debt || 0,
-        debt_paid_this_transaction: debtPaidThisTransaction, // Menggunakan kalkulasi yang baru
-        final_debt_snapshot: finalDebt, // Menggunakan kalkulasi yang baru
+        debt_paid_this_transaction: debtPaidThisTransaction,
+        final_debt_snapshot: finalDebt,
       };
 
       const newTransaction = await supabaseService.createTransaction(
@@ -146,6 +141,7 @@ export default function CartSidebar() {
           created_at: newTransaction.created_at,
           items: cart,
           subtotal: cartTotal,
+          includeDebt: includeDebt,
           totalToPay: totalToPay,
           amountPaid: cashPaid,
           change: change,
@@ -288,8 +284,15 @@ export default function CartSidebar() {
               </div>
             )}
             <Separator />
-            <div className="flex justify-between font-bold text-lg">
-              <p>Total Bayar</p>
+            <div className="flex justify-between items-baseline font-bold text-lg">
+              <div className="flex items-center">
+                <p>Total Bayar</p>
+                {includeDebt && (
+                  <span className="ml-2 text-xs font-normal text-blue-600">
+                    (Termasuk Hutang)
+                  </span>
+                )}
+              </div>
               <p>{formatRupiah(totalToPay)}</p>
             </div>
           </div>
@@ -358,8 +361,15 @@ export default function CartSidebar() {
                   </div>
                 </div>
 
-                <div className="flex justify-between font-bold">
-                  <span>Total Tagihan</span>
+                <div className="flex justify-between items-baseline font-bold">
+                  <div className="flex items-center">
+                    <span>Total Tagihan</span>
+                    {includeDebt && (
+                      <span className="ml-2 text-xs font-normal text-blue-600">
+                        (Termasuk Hutang)
+                      </span>
+                    )}
+                  </div>
                   <span>{formatRupiah(totalToPay)}</span>
                 </div>
                 <div className="flex justify-between">

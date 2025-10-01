@@ -13,6 +13,7 @@ interface ReceiptData {
   created_at: string;
   items: CartItem[];
   subtotal: number;
+  includeDebt: boolean;
   totalToPay: number;
   amountPaid: number;
   change: number;
@@ -90,8 +91,15 @@ export default function CheckoutPage() {
         </div>
         <Separator className="my-4" />
         <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span>Total Tagihan</span>
+          <div className="flex justify-between items-baseline font-bold">
+            <div className="flex items-center">
+              <span>Total Tagihan</span>
+              {receipt.includeDebt && (
+                <span className="ml-2 text-xs font-normal text-blue-600">
+                  (Termasuk Hutang)
+                </span>
+              )}
+            </div>
             <span className="font-bold">
               {formatRupiah(receipt.totalToPay)}
             </span>
