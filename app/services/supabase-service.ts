@@ -50,6 +50,9 @@ export interface Transaction {
   change: number;
   points_earned: number;
   debt_incurred: number;
+  debt_snapshot: number;
+  debt_paid_this_transaction: number;
+  final_debt_snapshot: number;
   transaction_items: TransactionItem[];
   customer?: {
     name: string;
@@ -235,6 +238,9 @@ class SupabaseService {
     change: number;
     points_earned: number;
     debt_incurred: number;
+    debt_snapshot: number;
+    debt_paid_this_transaction: number;
+    final_debt_snapshot: number;
   }): Promise<Transaction> {
     const { data: newTransaction, error: transactionError } =
       await this.supabase
@@ -250,6 +256,10 @@ class SupabaseService {
           change: transactionData.change,
           points_earned: transactionData.points_earned,
           debt_incurred: transactionData.debt_incurred,
+          debt_snapshot: transactionData.debt_snapshot,
+          debt_paid_this_transaction:
+            transactionData.debt_paid_this_transaction,
+          final_debt_snapshot: transactionData.final_debt_snapshot,
         })
         .select()
         .single();

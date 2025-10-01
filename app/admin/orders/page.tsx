@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Search, Eye, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -53,7 +53,6 @@ export default function OrdersPage() {
     setLoading(true);
     try {
       const dbTransactions = await supabaseService.getTransactionsWithDetails();
-      // Sekarang 'setOrders' akan ditemukan dan tidak error lagi
       setOrders(dbTransactions);
       setFilteredOrders(dbTransactions);
     } catch (error) {
@@ -107,9 +106,10 @@ export default function OrdersPage() {
                 <TableHead>Struk</TableHead>
                 <TableHead>Pelanggan</TableHead>
                 <TableHead>Total Belanja</TableHead>
+                <TableHead>Hutang Sblm Trx</TableHead>
+                <TableHead>Hutang Dibayar</TableHead>
                 <TableHead>Hutang Baru</TableHead>
-                <TableHead>Kembalian</TableHead>
-                <TableHead>Poin Didapat</TableHead>
+                <TableHead>Hutang Akhir</TableHead>
                 <TableHead>Aksi</TableHead>
               </TableRow>
             </TableHeader>
@@ -127,14 +127,14 @@ export default function OrdersPage() {
                       <div className="font-medium">
                         {order.customer?.name || "Tamu"}
                       </div>
-                      {order.customer && (
-                        <div className="text-sm text-muted-foreground">
-                          Hutang Akhir:{" "}
-                          {formatRupiah(order.customer.outstanding_debt)}
-                        </div>
-                      )}
                     </TableCell>
                     <TableCell>{formatRupiah(order.total)}</TableCell>
+                    <TableCell>
+                      {formatRupiah(order.debt_snapshot || 0)}
+                    </TableCell>
+                    <TableCell className="text-blue-600">
+                      {formatRupiah(order.debt_paid_this_transaction || 0)}
+                    </TableCell>
                     <TableCell
                       className={
                         order.debt_incurred > 0
@@ -144,10 +144,9 @@ export default function OrdersPage() {
                     >
                       {formatRupiah(order.debt_incurred)}
                     </TableCell>
-                    <TableCell className="text-green-600">
-                      {formatRupiah(order.change)}
+                    <TableCell className="font-bold text-red-700">
+                      {formatRupiah(order.final_debt_snapshot || 0)}
                     </TableCell>
-                    <TableCell>{order.points_earned} Poin</TableCell>
                     <TableCell>
                       <Button
                         variant="outline"
@@ -162,7 +161,7 @@ export default function OrdersPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center h-24">
+                  <TableCell colSpan={8} className="text-center h-24">
                     Tidak ada data transaksi ditemukan.
                   </TableCell>
                 </TableRow>
@@ -196,7 +195,7 @@ export default function OrdersPage() {
                       className="flex justify-between text-muted-foreground"
                     >
                       <span>
-                        {item.quantity}x (ID: ...{item.product_id.slice(-6)})
+                        {item.products.name} x{item.quantity}
                       </span>
                       <span>{formatRupiah(item.price * item.quantity)}</span>
                     </div>
@@ -217,48 +216,47 @@ export default function OrdersPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Kembalian:</span>
-                  <span className="text-green-600 font-medium">
+                  <span className="font-medium text-green-600">
                     {formatRupiah(selectedOrder.change)}
                   </span>
                 </div>
               </div>
               <Separator />
               <div className="space-y-1">
+                <h4 className="font-semibold">Rincian Hutang:</h4>
                 <div className="flex justify-between">
-                  <span>Hutang Transaksi Ini:</span>
-                  <span
-                    className={
-                      selectedOrder.debt_incurred > 0
-                        ? "text-red-600 font-medium"
-                        : ""
-                    }
-                  >
-                    {formatRupiah(selectedOrder.debt_incurred)}
+                  <span>Hutang Sebelum Transaksi:</span>
+                  <span>{formatRupiah(selectedOrder.debt_snapshot || 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Hutang Dibayar:</span>
+                  <span className="text-blue-600">
+                    -
+                    {formatRupiah(
+                      selectedOrder.debt_paid_this_transaction || 0
+                    )}
                   </span>
                 </div>
-                {selectedOrder.customer && (
-                  <div className="flex justify-between">
-                    <span>Total Hutang Pelanggan:</span>
-                    <span className="font-bold">
-                      {formatRupiah(selectedOrder.customer.outstanding_debt)}
-                    </span>
-                  </div>
-                )}
+                <div className="flex justify-between">
+                  <span>Hutang Baru:</span>
+                  <span className="text-red-600">
+                    +{formatRupiah(selectedOrder.debt_incurred)}
+                  </span>
+                </div>
+                <div className="flex justify-between font-bold border-t pt-1 mt-1">
+                  <span>Total Hutang Akhir:</span>
+                  <span className="text-red-700">
+                    {formatRupiah(selectedOrder.final_debt_snapshot || 0)}
+                  </span>
+                </div>
               </div>
               <Separator />
               <div className="space-y-1">
+                <h4 className="font-semibold">Rincian Poin:</h4>
                 <div className="flex justify-between">
                   <span>Poin Didapat:</span>
-                  <span>{selectedOrder.points_earned} Poin</span>
+                  <span>+{selectedOrder.points_earned} Poin</span>
                 </div>
-                {selectedOrder.customer && (
-                  <div className="flex justify-between">
-                    <span>Total Poin Pelanggan:</span>
-                    <span className="font-bold">
-                      {selectedOrder.customer.loyalty_points} Poin
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
           )}

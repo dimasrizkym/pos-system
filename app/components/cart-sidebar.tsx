@@ -45,21 +45,38 @@ export default function CartSidebar() {
   const [includeDebt, setIncludeDebt] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Kalkulasi baru yang lebih akurat
   const totalToPay = useMemo(() => {
-    if (customer && includeDebt) {
-      return cartTotal + customer.outstanding_debt;
-    }
-    return cartTotal;
+    return cartTotal + (includeDebt ? customer?.outstanding_debt || 0 : 0);
   }, [cartTotal, customer, includeDebt]);
 
-  const change = useMemo(
-    () => Math.max(0, cashPaid - totalToPay),
-    [cashPaid, totalToPay]
-  );
-  const newDebt = useMemo(
-    () => Math.max(0, totalToPay - cashPaid),
-    [cashPaid, totalToPay]
-  );
+  const debtPaidThisTransaction = useMemo(() => {
+    if (!includeDebt || !customer || cashPaid <= cartTotal) return 0;
+    // Uang yang dipakai untuk bayar hutang adalah sisa cash setelah bayar belanjaan
+    const cashAfterCart = cashPaid - cartTotal;
+    // Pembayaran utang tidak bisa melebihi utang yang ada
+    return Math.min(customer.outstanding_debt, cashAfterCart);
+  }, [cashPaid, cartTotal, customer, includeDebt]);
+
+  const newDebtThisTransaction = useMemo(() => {
+    // Utang baru hanya ada jika uang tunai tidak cukup untuk belanjaan saat ini
+    return Math.max(0, cartTotal - cashPaid);
+  }, [cashPaid, cartTotal]);
+
+  const change = useMemo(() => {
+    // Kembalian hanya ada jika uang tunai melebihi total tagihan
+    return Math.max(0, cashPaid - totalToPay);
+  }, [cashPaid, totalToPay]);
+
+  const finalDebt = useMemo(() => {
+    if (!customer) return newDebtThisTransaction;
+    return (
+      customer.outstanding_debt -
+      debtPaidThisTransaction +
+      newDebtThisTransaction
+    );
+  }, [customer, debtPaidThisTransaction, newDebtThisTransaction]);
+
   const pointsToEarn = useMemo(
     () => (cartTotal > 0 ? Math.floor(cartTotal / 20000) : 0),
     [cartTotal]
@@ -80,7 +97,7 @@ export default function CartSidebar() {
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
-    if (newDebt > 0 && !customer) {
+    if (newDebtThisTransaction > 0 && !customer) {
       alert("Pilih pelanggan untuk mencatat hutang.");
       return;
     }
@@ -88,7 +105,7 @@ export default function CartSidebar() {
     setIsLoading(true);
     try {
       const transactionStatus: "unpaid" | "paid" =
-        newDebt > 0 ? "unpaid" : "paid";
+        finalDebt > 0 ? "unpaid" : "paid";
 
       const transactionData = {
         user_id: user?.id || null,
@@ -101,7 +118,10 @@ export default function CartSidebar() {
         cash_paid: cashPaid,
         change: change,
         points_earned: pointsToEarn,
-        debt_incurred: newDebt,
+        debt_incurred: newDebtThisTransaction, // Menggunakan kalkulasi yang baru
+        debt_snapshot: customer?.outstanding_debt || 0,
+        debt_paid_this_transaction: debtPaidThisTransaction, // Menggunakan kalkulasi yang baru
+        final_debt_snapshot: finalDebt, // Menggunakan kalkulasi yang baru
       };
 
       const newTransaction = await supabaseService.createTransaction(
@@ -109,14 +129,10 @@ export default function CartSidebar() {
       );
 
       if (customer) {
-        const finalDebt =
-          (includeDebt ? 0 : customer.outstanding_debt) + newDebt;
-        const finalPoints = customer.loyalty_points + pointsToEarn;
-
         const updatedCustomer = await supabaseService.updateCustomer(
           customer.id,
           {
-            loyalty_points: finalPoints,
+            loyalty_points: customer.loyalty_points + pointsToEarn,
             outstanding_debt: finalDebt,
           }
         );
@@ -133,11 +149,10 @@ export default function CartSidebar() {
           totalToPay: totalToPay,
           amountPaid: cashPaid,
           change: change,
-          previousDebt: customer?.outstanding_debt || 0, // Tambahkan ini
-          newDebtThisTransaction: newDebt,
-          totalOutstandingDebt: customer
-            ? (includeDebt ? 0 : customer.outstanding_debt) + newDebt
-            : newDebt,
+          previousDebt: customer?.outstanding_debt || 0,
+          debtPaidThisTransaction: debtPaidThisTransaction,
+          newDebtThisTransaction: newDebtThisTransaction,
+          totalOutstandingDebt: finalDebt,
           previousPoints: customer?.loyalty_points || 0,
           pointsEarned: pointsToEarn,
           totalPoints: customer
@@ -200,13 +215,6 @@ export default function CartSidebar() {
           ) : (
             cart.map((item) => (
               <div key={item.id} className="flex gap-3">
-                {/* <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border">
-                  <img
-                    src={item.image || "/placeholder.svg"}
-                    alt={item.name}
-                    className="h-full w-full object-cover"
-                  />
-                </div> */}
                 <div className="flex flex-1 flex-col">
                   <div className="flex justify-between">
                     <h3 className="font-medium line-clamp-1">{item.name}</h3>
@@ -304,7 +312,7 @@ export default function CartSidebar() {
             </div>
             <div className="flex justify-between text-red-600">
               <p>Hutang Baru</p>
-              <p>{formatRupiah(newDebt)}</p>
+              <p>{formatRupiah(newDebtThisTransaction)}</p>
             </div>
           </div>
 
@@ -371,18 +379,21 @@ export default function CartSidebar() {
                       <span>{formatRupiah(customer.outstanding_debt)}</span>
                     </div>
                     <div className="flex justify-between">
+                      <span>Hutang Dibayar</span>
+                      <span className="text-blue-600">
+                        -{formatRupiah(debtPaidThisTransaction)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
                       <span>Hutang Baru</span>
                       <span className="text-red-600">
-                        {formatRupiah(newDebt)}
+                        +{formatRupiah(newDebtThisTransaction)}
                       </span>
                     </div>
                     <div className="flex justify-between font-bold">
                       <span>Total Hutang Setelah Transaksi</span>
                       <span className="text-red-600">
-                        {formatRupiah(
-                          (includeDebt ? 0 : customer.outstanding_debt) +
-                            newDebt
-                        )}
+                        {formatRupiah(finalDebt)}
                       </span>
                     </div>
                     <Separator className="my-1" />
