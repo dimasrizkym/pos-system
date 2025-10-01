@@ -1,44 +1,49 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
-import { useAuth } from "@/app/context/auth-context"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useAuth } from "@/app/context/auth-context";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
-  const { login } = useAuth()
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
 
     try {
-      const success = await login(username, password)
+      const success = await login(username, password);
 
       if (success) {
-        // Redirect to main POS page after successful login
-        router.push("/")
+        router.push("/");
       } else {
-        setError("Username atau password salah")
+        setError("Username atau password salah");
       }
     } catch (error: unknown) {
-      setError("Terjadi kesalahan saat login")
-      console.error("[v0] Login error:", error)
+      setError("Terjadi kesalahan saat login");
+      console.error("[v0] Login error:", error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
@@ -47,7 +52,9 @@ export default function LoginPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Login POS</CardTitle>
-              <CardDescription>Masukkan username dan password untuk login</CardDescription>
+              <CardDescription>
+                Masukkan username dan password untuk login
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin}>
@@ -80,21 +87,10 @@ export default function LoginPage() {
                   </Button>
                 </div>
               </form>
-              <div className="mt-4 text-sm text-gray-600 border-t pt-4">
-                <p className="font-medium mb-2">Demo Accounts:</p>
-                <div className="space-y-1">
-                  <p>
-                    👤 <strong>Owner:</strong> username "owner", password "owner123"
-                  </p>
-                  <p>
-                    👤 <strong>Kasir:</strong> username "kasir", password "kasir123"
-                  </p>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>
       </div>
     </div>
-  )
+  );
 }
